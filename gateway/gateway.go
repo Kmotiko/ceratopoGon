@@ -18,6 +18,6 @@ type AggregatingGateway struct {
 }
 
 type TransportGateway struct {
-	// mqttSnSessions map[string]TransportGWSession
-	// config GatewayConfig
+	MqttSnSessions map[string]*TransportSnSession
+	Config         *GatewayConfig
 }

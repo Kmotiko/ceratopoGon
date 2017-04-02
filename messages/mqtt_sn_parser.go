@@ -547,7 +547,9 @@ func NewPubComp() *PubRec {
 /* Subscribe                                 */
 /*********************************************/
 func NewSubscribe() *Subscribe {
-	return nil
+	m := &Subscribe{
+		Header: MqttSnHeader{0, MQTTSNT_SUBSCRIBE}}
+	return m
 }
 
 func (m *Subscribe) Marshall() []byte {
@@ -555,6 +557,24 @@ func (m *Subscribe) Marshall() []byte {
 }
 
 func (m *Subscribe) UnMarshall(packet []byte) {
+	index := 0
+	m.Header.UnMarshall(packet)
+	index += m.Size()
+
+	m.Flags = packet[index]
+	index++
+
+	m.MsgId = binary.BigEndian.Uint16(packet[index:])
+	index += 2
+
+	switch topicIdType(m.Flags) {
+	// if Topic is Normal or Short Name
+	case MQTTSN_TIDT_NORMAL | MQTTSN_TIDT_SHORT_NAME:
+		m.TopicName = string(packet[index:m.Header.Length])
+		// else if is Id
+	case MQTTSN_TIDT_PREDEFINED:
+		m.TopicId = binary.BigEndian.Uint16(packet[index:])
+	}
 }
 
 func (m *Subscribe) Size() int {

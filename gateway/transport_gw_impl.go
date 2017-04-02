@@ -6,8 +6,9 @@ import (
 	"net"
 )
 
-func NewTransportGateway() *TransportGateway {
-	g := &TransportGateway{}
+func NewTransportGateway(config *GatewayConfig) *TransportGateway {
+	g := &TransportGateway{
+		make(map[string]*TransportSnSession), config}
 	return g
 }
 
@@ -121,14 +122,22 @@ func (g *TransportGateway) handleGwInfo(conn *net.UDPConn, remote *net.UDPAddr, 
 /*********************************************/
 func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.Connect) {
 	log.Println("handle Connect")
-	// TODO: implement
+	// TODO: check connected client is aliready registerd or not
 
-	// create mqtt-sn client instance
+	// create mqtt-sn session instance
+	s := NewTransportSnSession(m.ClientId, conn, remote)
 
-	// create mqtt client instance
 	// connect to mqtt broker
+	s.ConnectToBroker(g.Config.BrokerHost, g.Config.BrokerPort, "", "")
 
 	// send conn ack
+	ack := message.NewConnAck()
+	ack.ReturnCode = message.MQTTSN_RC_ACCEPTED
+	packet := ack.Marshall()
+	conn.WriteToUDP(packet, remote)
+
+	// add session to map
+	g.MqttSnSessions[m.ClientId] = s
 }
 
 /*********************************************/
@@ -185,6 +194,14 @@ func (g *TransportGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr, 
 /*********************************************/
 func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr, m *message.Publish) {
 	// TODO: implement
+
+	// get mqttsn session
+
+	// send publish to broker
+
+	// if qos 0
+	// elif qos 1
+	// elif qos 2
 }
 
 /*********************************************/
@@ -220,6 +237,12 @@ func (g *TransportGateway) handlePubComp(conn *net.UDPConn, remote *net.UDPAddr,
 /*********************************************/
 func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
 	// TODO: implement
+
+	// regist topic to gateway instance
+
+	// send subscribe to broker
+
+	// send suback
 }
 
 /*********************************************/
