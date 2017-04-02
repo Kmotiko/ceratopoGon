@@ -6,12 +6,14 @@ import (
 )
 
 type GatewayConfig struct {
-	IsAggregate bool
-	Host        string
-	Port        int
-	BrokerHost  string
-	BrokerPort  int
-	LogFilePath string
+	IsAggregate    bool
+	Host           string
+	Port           int
+	BrokerHost     string
+	BrokerPort     int
+	BrokerUser     string
+	BrokerPassword string
+	LogFilePath    string
 }
 
 func ParseConfig(filename string) (*GatewayConfig, error) {
