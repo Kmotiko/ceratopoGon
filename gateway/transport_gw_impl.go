@@ -137,7 +137,7 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 	conn.WriteToUDP(packet, remote)
 
 	// add session to map
-	g.MqttSnSessions[m.ClientId] = s
+	g.MqttSnSessions[remote.String()] = s
 }
 
 /*********************************************/
@@ -180,6 +180,12 @@ func (g *TransportGateway) handleWillMsg(conn *net.UDPConn, remote *net.UDPAddr,
 /*********************************************/
 func (g *TransportGateway) handleRegister(conn *net.UDPConn, remote *net.UDPAddr, m *message.Register) {
 	// TODO: implement
+
+	// search topicid
+
+	// Create RegAck with topicid
+
+	// send RegAck
 }
 
 /*********************************************/
