@@ -199,15 +199,56 @@ func (g *TransportGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr, 
 /* Publish                                   */
 /*********************************************/
 func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr, m *message.Publish) {
-	// TODO: implement
-
 	// get mqttsn session
+	s, ok := g.MqttSnSessions[remote.String()]
+	if ok == false {
+		// TODO: error handling
+	}
+
+	var topicName string
+	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
+		// search topic name from topic id
+		topicName, ok = s.TopicMap[m.TopicId]
+		if ok == false {
+			// error handling
+			log.Println("ERROR : topic was not found.")
+			puback := message.NewPubAck(
+				m.TopicId,
+				m.MsgId,
+				message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID)
+			// send
+			conn.WriteToUDP(puback.Marshall(), remote)
+
+			return
+		}
+	} else if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_SHORT_NAME {
+		topicName = m.TopicName
+	}
 
 	// send publish to broker
+	mqtt := s.mqttClient
 
-	// if qos 0
-	// elif qos 1
-	// elif qos 2
+	// get qos
+	qos := message.QosFlag(m.Flags)
+
+	// send Publish to Mqtt Broker.
+	// Topic, Qos, Retain, Payload
+	mqtt.Publish(topicName, qos, false, m.Data)
+
+	if qos == 0 {
+		// if qos 0
+		// nothing to do
+	} else if qos == 1 {
+		// elif qos 1
+		// Create PubAck
+		puback := message.NewPubAck(m.TopicId, m.MsgId, message.MQTTSN_RC_ACCEPTED)
+
+		// send
+		conn.WriteToUDP(puback.Marshall(), remote)
+	} else if qos == 2 {
+		// elif qos 2
+		// send PubRec
+	}
 }
 
 /*********************************************/

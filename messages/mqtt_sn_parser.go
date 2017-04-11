@@ -45,7 +45,7 @@ func UnMarshall(packet []byte) (msg MqttSnMessage) {
 		msg = NewPublish()
 		msg.UnMarshall(packet)
 	case MQTTSNT_PUBACK:
-		msg = NewPubAck()
+		msg = NewPubAck(0, 0, 0)
 		msg.UnMarshall(packet)
 	case MQTTSNT_PUBCOMP:
 		msg = NewPubComp()
@@ -94,11 +94,15 @@ func UnMarshall(packet []byte) (msg MqttSnMessage) {
 	return msg
 }
 
-func mqttsnFlags(dup uint8, qos uint8, retain uint8, will uint8, csession uint8, tidType uint8) uint8 {
-	return dup << 7 & qos << 5 & retain << 4 & will << 3 & csession << 2 & tidType
+func MqttSnFlags(dup uint8, qos uint8, retain bool, will uint8, csession uint8, tidType uint8) uint8 {
+	if retain == false {
+		return dup << 7 & qos << 5 & 1 << 4 & will << 3 & csession << 2 & tidType
+	} else {
+		return dup << 7 & qos << 5 & will << 3 & csession << 2 & tidType
+	}
 }
 
-func dupFlag(flags uint8) bool {
+func DupFlag(flags uint8) bool {
 	dup := false
 	if (flags >> 7) > 0 {
 		dup = true
@@ -106,11 +110,11 @@ func dupFlag(flags uint8) bool {
 	return dup
 }
 
-func qosFlag(flags uint8) uint8 {
+func QosFlag(flags uint8) uint8 {
 	return flags >> 5 & 0x03
 }
 
-func hasRetainFlag(flags uint8) bool {
+func HasRetainFlag(flags uint8) bool {
 	retain := false
 	if (flags >> 4 & 0x01) > 0 {
 		retain = true
@@ -118,7 +122,7 @@ func hasRetainFlag(flags uint8) bool {
 	return retain
 }
 
-func hasWillFlag(flags uint8) bool {
+func HasWillFlag(flags uint8) bool {
 	will := false
 	if (flags >> 3 & 0x01) > 0 {
 		will = true
@@ -126,7 +130,7 @@ func hasWillFlag(flags uint8) bool {
 	return will
 }
 
-func hasCleanSessionFlag(flags uint8) bool {
+func HasCleanSessionFlag(flags uint8) bool {
 	csession := false
 	if (flags >> 2 & 0x01) > 0 {
 		csession = true
@@ -134,7 +138,7 @@ func hasCleanSessionFlag(flags uint8) bool {
 	return csession
 }
 
-func topicIdType(flags uint8) uint8 {
+func TopicIdType(flags uint8) uint8 {
 	return flags & 0x03
 }
 
@@ -479,36 +483,140 @@ func (m *RegAck) Size() int {
 /* Publish                                   */
 /*********************************************/
 func NewPublish() *Publish {
-	return nil
+	return NewPublishPredefined(0, false, 0, 0, nil)
+}
+
+func NewPublishShortName(qos uint8, retain bool, topic string, msgId uint16, data []uint8) *Publish {
+	// make flags
+	// dup, qos, retain, will, cleansession, topic type
+	flags := MqttSnFlags(0, qos, retain, 0, 0, 0)
+
+	// make Publish
+	// Header, Flags, TopicId, TopicName, MsgId, Data
+	m := &Publish{
+		Header:    MqttSnHeader{7, MQTTSNT_PUBLISH},
+		Flags:     flags,
+		TopicName: topic,
+		MsgId:     msgId,
+		Data:      data}
+	return m
+}
+
+func NewPublishPredefined(qos uint8, retain bool, topicId uint16, msgId uint16, data []uint8) *Publish {
+	// make flags
+	flags := MqttSnFlags(0, qos, retain, 0, 0, 0)
+
+	// make Publish
+	// Header, Flags, TopicId, TopicName, MsgId, Data
+	m := &Publish{
+		Header:  MqttSnHeader{7, MQTTSNT_PUBLISH},
+		Flags:   flags,
+		TopicId: topicId,
+		MsgId:   msgId,
+		Data:    data}
+	return m
 }
 
 func (m *Publish) Marshall() []byte {
-	return nil
+	index := 0
+	packet := make([]byte, m.Size())
+
+	hPacket := m.Header.Marshall()
+	copy(packet[index:], hPacket)
+	index += m.Header.Size()
+
+	packet[index] = m.Flags
+	index++
+
+	if TopicIdType(m.Flags) == MQTTSN_TIDT_PREDEFINED {
+		// if topic type is TopicId
+		binary.BigEndian.PutUint16(packet[index:], m.TopicId)
+	} else if TopicIdType(m.Flags) == MQTTSN_TIDT_SHORT_NAME {
+		// else if topic type is Short TopicName
+		copy(packet[index:], m.TopicName)
+	}
+
+	index += 2
+
+	binary.BigEndian.PutUint16(packet[index:], m.MsgId)
+	index += 2
+
+	copy(packet[index:], m.Data)
+
+	return packet
 }
 
 func (m *Publish) UnMarshall(packet []byte) {
+	index := 0
+	m.Header.UnMarshall(packet[index:])
+	index += m.Header.Size()
+
+	m.Flags = packet[index]
+	index++
+
+	if TopicIdType(m.Flags) == MQTTSN_TIDT_PREDEFINED {
+		m.TopicId = binary.BigEndian.Uint16(packet[index:])
+	} else if TopicIdType(m.Flags) == MQTTSN_TIDT_SHORT_NAME {
+		m.TopicName = string(packet[index : index+2])
+	}
+	index += 2
+
+	m.MsgId = binary.BigEndian.Uint16(packet[index:])
+	index += 2
+
+	remain := int(m.Header.Length) - (m.Header.Size() + 5)
+	m.Data = make([]uint8, remain)
+	copy(m.Data, packet[index:m.Header.Length])
 }
 
 func (m *Publish) Size() int {
-	return 0
+	return m.Header.Size() + 5 + len(m.Data)
 }
 
 /*********************************************/
 /* PubAck                                    */
 /*********************************************/
-func NewPubAck() *PubAck {
-	return nil
+func NewPubAck(topicId uint16, msgId uint16, rc uint8) *PubAck {
+	m := &PubAck{
+		MqttSnHeader{7, MQTTSNT_PUBACK}, topicId, msgId, rc}
+	return m
 }
 
 func (m *PubAck) Marshall() []byte {
-	return nil
+	packet := make([]byte, m.Size())
+
+	index := 0
+	h_packet := m.Header.Marshall()
+	copy(packet[index:], h_packet)
+	index += m.Header.Size()
+
+	binary.BigEndian.PutUint16(packet[index:], m.TopicId)
+	index += 2
+
+	binary.BigEndian.PutUint16(packet[index:], m.MsgId)
+	index += 2
+
+	packet[index] = m.ReturnCode
+
+	return packet
 }
 
 func (m *PubAck) UnMarshall(packet []byte) {
+	index := 0
+	m.Header.UnMarshall(packet[index:])
+	index += m.Header.Size()
+
+	m.TopicId = binary.BigEndian.Uint16(packet[index:])
+	index += 2
+
+	m.MsgId = binary.BigEndian.Uint16(packet[index:])
+	index += 2
+
+	m.ReturnCode = packet[index]
 }
 
 func (m *PubAck) Size() int {
-	return 0
+	return 7
 }
 
 /*********************************************/
@@ -567,7 +675,7 @@ func (m *Subscribe) UnMarshall(packet []byte) {
 	m.MsgId = binary.BigEndian.Uint16(packet[index:])
 	index += 2
 
-	switch topicIdType(m.Flags) {
+	switch TopicIdType(m.Flags) {
 	// if Topic is Normal or Short Name
 	case MQTTSN_TIDT_NORMAL | MQTTSN_TIDT_SHORT_NAME:
 		m.TopicName = string(packet[index:m.Header.Length])

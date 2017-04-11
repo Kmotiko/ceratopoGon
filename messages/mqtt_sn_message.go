@@ -119,16 +119,16 @@ type RegAck struct {
 }
 
 type Publish struct {
-	Header  MqttSnHeader
-	Flags   uint8
-	TopicId uint16
-	MsgId   uint16
-	Data    []uint8
+	Header    MqttSnHeader
+	Flags     uint8
+	TopicId   uint16
+	TopicName string
+	MsgId     uint16
+	Data      []uint8
 }
 
 type PubAck struct {
 	Header     MqttSnHeader
-	Flags      uint8
 	TopicId    uint16
 	MsgId      uint16
 	ReturnCode uint8
