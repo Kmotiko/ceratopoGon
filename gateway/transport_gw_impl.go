@@ -179,26 +179,45 @@ func (g *TransportGateway) handleWillMsg(conn *net.UDPConn, remote *net.UDPAddr,
 /* Register                                  */
 /*********************************************/
 func (g *TransportGateway) handleRegister(conn *net.UDPConn, remote *net.UDPAddr, m *message.Register) {
-	// TODO: implement
+	log.Println("handle Register")
+
+	// get mqttsn session
+	s, ok := g.MqttSnSessions[remote.String()]
+	if ok == false {
+		// TODO: error handling
+	}
 
 	// search topicid
+	topicId, ok := s.LoadTopicId(m.TopicName)
+	if !ok {
+		// store topic to map
+		topicId = s.StoreTopic(m.TopicName)
+	}
 
 	// Create RegAck with topicid
+	regAck := message.NewRegAck(
+		topicId, m.MsgId, message.MQTTSN_RC_ACCEPTED)
 
 	// send RegAck
+	conn.WriteToUDP(regAck.Marshall(), remote)
 }
 
 /*********************************************/
 /* RegAck                                    */
 /*********************************************/
 func (g *TransportGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.RegAck) {
-	// TODO: implement
+	log.Println("handle RegAck")
+	if m.ReturnCode != message.MQTTSN_RC_ACCEPTED {
+		log.Println("ERROR : RegAck not accepted. Reqson = ", m.ReturnCode)
+	}
 }
 
 /*********************************************/
 /* Publish                                   */
 /*********************************************/
 func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr, m *message.Publish) {
+	log.Println("handle Publish")
+
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
@@ -208,7 +227,7 @@ func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr,
 	var topicName string
 	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
 		// search topic name from topic id
-		topicName, ok = s.TopicMap[m.TopicId]
+		topicName, ok = s.LoadTopic(m.TopicId)
 		if ok == false {
 			// error handling
 			log.Println("ERROR : topic was not found.")
@@ -223,6 +242,8 @@ func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr,
 		}
 	} else if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_SHORT_NAME {
 		topicName = m.TopicName
+	} else {
+		log.Println("ERROR : invalid TopicIdType ", message.TopicIdType(m.Flags))
 	}
 
 	// send publish to broker

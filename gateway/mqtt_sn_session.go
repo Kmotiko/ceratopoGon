@@ -39,6 +39,35 @@ func (s *MqttSnSession) NextTopicId() uint16 {
 	return s.topicId
 }
 
+func (s *MqttSnSession) StoreTopic(topicName string) uint16 {
+	topicId, ok := s.LoadTopicId(topicName)
+	if ok {
+		return topicId
+	}
+
+	topicId = s.NextTopicId()
+
+	// TODO: add lock
+	s.TopicMap[topicId] = topicName
+	return topicId
+}
+
+func (s *MqttSnSession) LoadTopic(topicId uint16) (string, bool) {
+	// TODO: add lock
+	topicName, ok := s.TopicMap[topicId]
+	return topicName, ok
+}
+
+func (s *MqttSnSession) LoadTopicId(topicName string) (uint16, bool) {
+	// TODO: add lock
+	for k, v := range s.TopicMap {
+		if v == topicName {
+			return k, true
+		}
+	}
+	return 0, false
+}
+
 func (s *MqttSnSession) FreeMsgId(i uint16) {
 	// TODO: add lock
 	s.msgId[i] = false

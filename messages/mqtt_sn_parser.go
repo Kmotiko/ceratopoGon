@@ -36,10 +36,10 @@ func UnMarshall(packet []byte) (msg MqttSnMessage) {
 		msg = NewWillMsg()
 		msg.UnMarshall(packet)
 	case MQTTSNT_REGISTER:
-		msg = NewRegister()
+		msg = NewRegister(0, 0, "")
 		msg.UnMarshall(packet)
 	case MQTTSNT_REGACK:
-		msg = NewRegAck()
+		msg = NewRegAck(0, 0, MQTTSN_RC_ACCEPTED)
 		msg.UnMarshall(packet)
 	case MQTTSNT_PUBLISH:
 		msg = NewPublish()
@@ -446,37 +446,100 @@ func (m *WillMsg) Size() int {
 /*********************************************/
 /* Register                                  */
 /*********************************************/
-func NewRegister() *Register {
-	return nil
+func NewRegister(topicId uint16, msgId uint16, topicName string) *Register {
+	m := &Register{
+		MqttSnHeader{uint16(6 + len(topicName)), MQTTSNT_REGISTER},
+		topicId,
+		msgId,
+		topicName}
+	return m
 }
 
 func (m *Register) Marshall() []byte {
-	return nil
+	index := 0
+	packet := make([]byte, m.Size())
+
+	hPacket := m.Header.Marshall()
+	copy(packet[index:], hPacket)
+	index += m.Header.Size()
+
+	binary.BigEndian.PutUint16(packet[index:], m.TopicId)
+	index += 2
+
+	binary.BigEndian.PutUint16(packet[index:], m.MsgId)
+	index += 2
+
+	copy(packet[index:], m.TopicName)
+	index += 2
+
+	return packet
 }
 
 func (m *Register) UnMarshall(packet []byte) {
+	index := 0
+	m.Header.UnMarshall(packet[index:])
+	index += m.Header.Size()
+
+	m.TopicId = binary.BigEndian.Uint16(packet[index:])
+	index += 2
+
+	m.MsgId = binary.BigEndian.Uint16(packet[index:])
+	index += 2
+
+	m.TopicName = string(packet[index:m.Header.Length])
 }
 
 func (m *Register) Size() int {
-	return 0
+	return 6 + len(m.TopicName)
 }
 
 /*********************************************/
 /* RegAck                                    */
 /*********************************************/
-func NewRegAck() *RegAck {
-	return nil
+func NewRegAck(topicId uint16, msgId uint16, rc uint8) *RegAck {
+	m := &RegAck{
+		MqttSnHeader{7, MQTTSNT_REGACK},
+		topicId,
+		msgId,
+		rc}
+	return m
 }
 
 func (m *RegAck) Marshall() []byte {
-	return nil
+	index := 0
+	packet := make([]byte, m.Size())
+
+	hPacket := m.Header.Marshall()
+	copy(packet[index:], hPacket)
+	index += m.Header.Size()
+
+	binary.BigEndian.PutUint16(packet[index:], m.TopicId)
+	index += 2
+
+	binary.BigEndian.PutUint16(packet[index:], m.MsgId)
+	index += 2
+
+	packet[index] = m.ReturnCode
+
+	return packet
 }
 
 func (m *RegAck) UnMarshall(packet []byte) {
+	index := 0
+	m.Header.UnMarshall(packet[index:])
+	m.Header.Size()
+
+	m.TopicId = binary.BigEndian.Uint16(packet[index:])
+	index += 2
+
+	m.MsgId = binary.BigEndian.Uint16(packet[index:])
+	index += 2
+
+	m.ReturnCode = packet[index]
 }
 
 func (m *RegAck) Size() int {
-	return 0
+	return 7
 }
 
 /*********************************************/
