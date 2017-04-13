@@ -128,7 +128,11 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 	s := NewTransportSnSession(m.ClientId, conn, remote)
 
 	// connect to mqtt broker
-	s.ConnectToBroker(g.Config.BrokerHost, g.Config.BrokerPort, "", "")
+	s.ConnectToBroker(
+		g.Config.BrokerHost,
+		g.Config.BrokerPort,
+		g.Config.BrokerUser,
+		g.Config.BrokerPassword)
 
 	// send conn ack
 	ack := message.NewConnAck()
