@@ -312,6 +312,8 @@ func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAdd
 
 	// regist topic to gateway instance
 
+	// if topic include wildcard, set topicId as 0x0000
+
 	// send subscribe to broker
 
 	// send suback

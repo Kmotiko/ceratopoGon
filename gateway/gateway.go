@@ -1,7 +1,8 @@
 package ceratopogon
 
 import (
-	// "github.com/KMotiko/ceratopogon/messages"
+	//	"github.com/KMotiko/ceratopogon/messages"
+	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"net"
 )
 
@@ -10,14 +11,16 @@ type Gateway interface {
 }
 
 type AggregatingGateway struct {
-	// sendBuffer chan *message.MqttSnMessage
-	// mqttSnSessions map[string]MqttSnSession
-	// mqttClient MqttClient
-	// topics
-	// config GatewayConfig
+	// mutex sync.RWMutex
+	MqttSnSessions map[string]*MqttSnSession
+	Config         *GatewayConfig
+	mqttClient     MQTT.Client
+	// sendBuffer     chan *message.MqttSnMessage
+	// topics Topic
 }
 
 type TransportGateway struct {
+	// mutex sync.RWMutex
 	MqttSnSessions map[string]*TransportSnSession
 	Config         *GatewayConfig
 }
