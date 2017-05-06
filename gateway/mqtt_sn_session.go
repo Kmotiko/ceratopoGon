@@ -11,8 +11,7 @@ type MqttSnSession struct {
 	ClientId string
 	Conn     *net.UDPConn
 	Remote   *net.UDPAddr
-	TopicMap map[uint16]string
-	topicId  uint16
+	Topics   *TopicMap
 	msgId    [0xffff]bool
 }
 
@@ -25,47 +24,20 @@ type TransportSnSession struct {
 
 func NewMqttSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *MqttSnSession {
 	s := &MqttSnSession{
-		id, conn, remote, make(map[uint16]string), 0, [0xffff]bool{}}
+		id, conn, remote, NewTopicMap(), [0xffff]bool{}}
 	return s
 }
 
-func (s *MqttSnSession) NextTopicId() uint16 {
-	// TODO: add lock
-	s.topicId++
-	if s.topicId == 0xffff {
-		// err
-	}
-
-	return s.topicId
-}
-
 func (s *MqttSnSession) StoreTopic(topicName string) uint16 {
-	topicId, ok := s.LoadTopicId(topicName)
-	if ok {
-		return topicId
-	}
-
-	topicId = s.NextTopicId()
-
-	// TODO: add lock
-	s.TopicMap[topicId] = topicName
-	return topicId
+	return s.Topics.StoreTopic(topicName)
 }
 
 func (s *MqttSnSession) LoadTopic(topicId uint16) (string, bool) {
-	// TODO: add lock
-	topicName, ok := s.TopicMap[topicId]
-	return topicName, ok
+	return s.Topics.LoadTopic(topicId)
 }
 
 func (s *MqttSnSession) LoadTopicId(topicName string) (uint16, bool) {
-	// TODO: add lock
-	for k, v := range s.TopicMap {
-		if v == topicName {
-			return k, true
-		}
-	}
-	return 0, false
+	return s.Topics.LoadTopicId(topicName)
 }
 
 func (s *MqttSnSession) FreeMsgId(i uint16) {
@@ -91,8 +63,7 @@ func NewTransportSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *T
 			id,
 			conn,
 			remote,
-			make(map[uint16]string),
-			0,
+			NewTopicMap(),
 			[0xffff]bool{}},
 		nil}
 	return s
