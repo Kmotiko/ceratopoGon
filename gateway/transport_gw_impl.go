@@ -4,11 +4,12 @@ import (
 	"github.com/KMotiko/ceratopogon/messages"
 	"log"
 	"net"
+	"sync"
 )
 
 func NewTransportGateway(config *GatewayConfig) *TransportGateway {
 	g := &TransportGateway{
-		make(map[string]*TransportSnSession), config}
+		sync.RWMutex{}, make(map[string]*TransportSnSession), config}
 	return g
 }
 
@@ -139,6 +140,10 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 	ack.ReturnCode = message.MQTTSN_RC_ACCEPTED
 	packet := ack.Marshall()
 	conn.WriteToUDP(packet, remote)
+
+	// lock
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
 
 	// add session to map
 	g.MqttSnSessions[remote.String()] = s

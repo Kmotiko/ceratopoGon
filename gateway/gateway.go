@@ -4,6 +4,7 @@ import (
 	//	"github.com/KMotiko/ceratopogon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"net"
+	"sync"
 )
 
 type Gateway interface {
@@ -11,7 +12,7 @@ type Gateway interface {
 }
 
 type AggregatingGateway struct {
-	// mutex sync.RWMutex
+	mutex          sync.RWMutex
 	MqttSnSessions map[string]*MqttSnSession
 	Config         *GatewayConfig
 	mqttClient     MQTT.Client
@@ -20,7 +21,7 @@ type AggregatingGateway struct {
 }
 
 type TransportGateway struct {
-	// mutex sync.RWMutex
+	mutex          sync.RWMutex
 	MqttSnSessions map[string]*TransportSnSession
 	Config         *GatewayConfig
 }

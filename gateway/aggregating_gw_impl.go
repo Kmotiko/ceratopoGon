@@ -156,6 +156,10 @@ func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 	packet := ack.Marshall()
 	conn.WriteToUDP(packet, remote)
 
+	// lock
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
 	// add session to map
 	g.MqttSnSessions[remote.String()] = s
 }
@@ -399,8 +403,17 @@ func (g *AggregatingGateway) handleWillTopicResp(conn *net.UDPConn, remote *net.
 }
 
 /*********************************************/
-/* WillMsgResp                             */
+/* WillMsgResp                               */
 /*********************************************/
 func (g *AggregatingGateway) handleWillMsgResp(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopicResp) {
 	// TODO: implement
+}
+
+/*********************************************/
+/* OnPublish                                 */
+/*********************************************/
+// handle message from broker
+func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
+	log.Println("on publish!!!")
+	// TODO: send Publish to MQTT-SN Client
 }

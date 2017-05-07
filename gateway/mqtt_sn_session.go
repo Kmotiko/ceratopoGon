@@ -5,9 +5,11 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 )
 
 type MqttSnSession struct {
+	mutex    sync.RWMutex
 	ClientId string
 	Conn     *net.UDPConn
 	Remote   *net.UDPAddr
@@ -24,7 +26,7 @@ type TransportSnSession struct {
 
 func NewMqttSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *MqttSnSession {
 	s := &MqttSnSession{
-		id, conn, remote, NewTopicMap(), [0xffff]bool{}}
+		sync.RWMutex{}, id, conn, remote, NewTopicMap(), [0xffff]bool{}}
 	return s
 }
 
@@ -41,12 +43,16 @@ func (s *MqttSnSession) LoadTopicId(topicName string) (uint16, bool) {
 }
 
 func (s *MqttSnSession) FreeMsgId(i uint16) {
-	// TODO: add lock
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	s.msgId[i] = false
 }
 
 func (s *MqttSnSession) NextMsgId() uint16 {
-	// TODO: add lock
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	for i, v := range s.msgId {
 		if !v {
 			return uint16(i)
@@ -60,6 +66,7 @@ func (s *MqttSnSession) NextMsgId() uint16 {
 func NewTransportSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *TransportSnSession {
 	s := &TransportSnSession{
 		MqttSnSession{
+			sync.RWMutex{},
 			id,
 			conn,
 			remote,
@@ -89,6 +96,6 @@ func (s *TransportSnSession) ConnectToBroker(brokerAddr string, brokerPort int, 
 }
 
 func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
-	// send Publish to MQTT-SN Client
 	log.Println("on publish!!!")
+	// TODO: send Publish to MQTT-SN Client
 }
