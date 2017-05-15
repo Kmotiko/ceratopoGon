@@ -12,12 +12,13 @@ type TopicMap struct {
 
 func NewTopicMap() *TopicMap {
 	t := &TopicMap{
+		mutex:   sync.RWMutex{},
 		topics:  make(map[uint16]string),
 		topicId: 0}
 	return t
 }
 
-func (t *TopicMap) NextTopicId() uint16 {
+func (t *TopicMap) nextTopicId() uint16 {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -33,15 +34,19 @@ func (t *TopicMap) StoreTopic(topicName string) uint16 {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	topicId, ok := t.LoadTopicId(topicName)
-	if ok {
-		return topicId
+	for k, v := range t.topics {
+		if v == topicName {
+			return k
+		}
 	}
 
-	topicId = t.NextTopicId()
+	t.topicId++
+	if t.topicId == 0xffff {
+		// err
+	}
 
-	t.topics[topicId] = topicName
-	return topicId
+	t.topics[t.topicId] = topicName
+	return t.topicId
 }
 
 func (t *TopicMap) LoadTopic(topicId uint16) (string, bool) {

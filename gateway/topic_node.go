@@ -5,6 +5,14 @@ import (
 	"sync"
 )
 
+var topicEntry *Topics = &Topics{
+	topicRoot:  NewTopicNode(),
+	topicIndex: make(map[string][]*MqttSnSession, 0)}
+
+func GetTopicEntry() *Topics {
+	return topicEntry
+}
+
 // Structure to management topics
 type Topics struct {
 	mutex      sync.RWMutex
