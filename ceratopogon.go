@@ -21,7 +21,8 @@ func serverLoop(config *ceratopogon.GatewayConfig) error {
 
 	var gateway ceratopogon.Gateway
 	if config.IsAggregate {
-		// not implement yet
+		gateway = ceratopogon.NewAggregatingGateway(config)
+		gateway.(*(ceratopogon.AggregatingGateway)).StartUp()
 	} else {
 		gateway = ceratopogon.NewTransportGateway(config)
 	}
@@ -33,7 +34,7 @@ func serverLoop(config *ceratopogon.GatewayConfig) error {
 		}
 
 		// launch gateway
-		gateway.HandlePacket(conn, remote, buf)
+		go gateway.HandlePacket(conn, remote, buf)
 	}
 }
 
