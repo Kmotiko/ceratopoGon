@@ -60,7 +60,7 @@ func UnMarshall(packet []byte) (msg MqttSnMessage) {
 		msg = NewSubscribe()
 		msg.UnMarshall(packet)
 	case MQTTSNT_SUBACK:
-		msg = NewSubAck()
+		msg = NewSubAck(0, 0, MQTTSN_RC_ACCEPTED)
 		msg.UnMarshall(packet)
 	case MQTTSNT_UNSUBSCRIBE:
 		msg = NewUnSubscribe()
@@ -546,18 +546,34 @@ func (m *RegAck) Size() int {
 /* Publish                                   */
 /*********************************************/
 func NewPublish() *Publish {
-	return NewPublishPredefined(0, false, 0, 0, nil)
+	return NewPublishNormal(0, false, 0, 0, nil)
 }
 
-func NewPublishShortName(qos uint8, retain bool, topic string, msgId uint16, data []uint8) *Publish {
+func NewPublishNormal(qos uint8, retain bool, topicId uint16, msgId uint16, data []uint8) *Publish {
 	// make flags
-	// dup, qos, retain, will, cleansession, topic type
-	flags := MqttSnFlags(0, qos, retain, 0, 0, 0)
+	// dup, qos, retain, will, cleansession, topicIdType
+	flags := MqttSnFlags(0, qos, retain, 0, 0, MQTTSN_TIDT_NORMAL)
 
 	// make Publish
 	// Header, Flags, TopicId, TopicName, MsgId, Data
 	m := &Publish{
-		Header:    MqttSnHeader{7, MQTTSNT_PUBLISH},
+		Header:  MqttSnHeader{7 + uint16(len(data)), MQTTSNT_PUBLISH},
+		Flags:   flags,
+		TopicId: topicId,
+		MsgId:   msgId,
+		Data:    data}
+	return m
+}
+
+func NewPublishShortName(qos uint8, retain bool, topic string, msgId uint16, data []uint8) *Publish {
+	// make flags
+	// dup, qos, retain, will, cleansession, topicIdType
+	flags := MqttSnFlags(0, qos, retain, 0, 0, MQTTSN_TIDT_NORMAL)
+
+	// make Publish
+	// Header, Flags, TopicId, TopicName, MsgId, Data
+	m := &Publish{
+		Header:    MqttSnHeader{7 + uint16(len(data)), MQTTSNT_PUBLISH},
 		Flags:     flags,
 		TopicName: topic,
 		MsgId:     msgId,
@@ -567,12 +583,13 @@ func NewPublishShortName(qos uint8, retain bool, topic string, msgId uint16, dat
 
 func NewPublishPredefined(qos uint8, retain bool, topicId uint16, msgId uint16, data []uint8) *Publish {
 	// make flags
-	flags := MqttSnFlags(0, qos, retain, 0, 0, 0)
+	// dup, qos, retain, will, cleansession, topicIdType
+	flags := MqttSnFlags(0, qos, retain, 0, 0, MQTTSN_TIDT_PREDEFINED)
 
 	// make Publish
 	// Header, Flags, TopicId, TopicName, MsgId, Data
 	m := &Publish{
-		Header:  MqttSnHeader{7, MQTTSNT_PUBLISH},
+		Header:  MqttSnHeader{7 + uint16(len(data)), MQTTSNT_PUBLISH},
 		Flags:   flags,
 		TopicId: topicId,
 		MsgId:   msgId,
@@ -591,7 +608,8 @@ func (m *Publish) Marshall() []byte {
 	packet[index] = m.Flags
 	index++
 
-	if TopicIdType(m.Flags) == MQTTSN_TIDT_PREDEFINED {
+	if (TopicIdType(m.Flags) == MQTTSN_TIDT_PREDEFINED) ||
+		(TopicIdType(m.Flags) == MQTTSN_TIDT_NORMAL) {
 		// if topic type is TopicId
 		binary.BigEndian.PutUint16(packet[index:], m.TopicId)
 	} else if TopicIdType(m.Flags) == MQTTSN_TIDT_SHORT_NAME {
@@ -604,7 +622,7 @@ func (m *Publish) Marshall() []byte {
 	binary.BigEndian.PutUint16(packet[index:], m.MsgId)
 	index += 2
 
-	copy(packet[index:], m.Data)
+	copy(packet[index:], m.Data[0:])
 
 	return packet
 }
@@ -730,7 +748,7 @@ func (m *Subscribe) Marshall() []byte {
 func (m *Subscribe) UnMarshall(packet []byte) {
 	index := 0
 	m.Header.UnMarshall(packet)
-	index += m.Size()
+	index += m.Header.Size()
 
 	m.Flags = packet[index]
 	index++
@@ -740,7 +758,7 @@ func (m *Subscribe) UnMarshall(packet []byte) {
 
 	switch TopicIdType(m.Flags) {
 	// if Topic is Normal or Short Name
-	case MQTTSN_TIDT_NORMAL | MQTTSN_TIDT_SHORT_NAME:
+	case MQTTSN_TIDT_NORMAL, MQTTSN_TIDT_SHORT_NAME:
 		m.TopicName = string(packet[index:m.Header.Length])
 		// else if is Id
 	case MQTTSN_TIDT_PREDEFINED:
@@ -749,25 +767,49 @@ func (m *Subscribe) UnMarshall(packet []byte) {
 }
 
 func (m *Subscribe) Size() int {
+	// TODO: implement
 	return 0
 }
 
 /*********************************************/
 /* SubAck                                 */
 /*********************************************/
-func NewSubAck() *SubAck {
-	return nil
+func NewSubAck(topicId uint16, msgId uint16, rc uint8) *SubAck {
+	m := &SubAck{
+		Header:     MqttSnHeader{8, MQTTSNT_SUBACK},
+		TopicId:    topicId,
+		MsgId:      msgId,
+		ReturnCode: rc}
+	return m
 }
 
 func (m *SubAck) Marshall() []byte {
-	return nil
+	packet := make([]byte, m.Size())
+	index := 0
+
+	hPacket := m.Header.Marshall()
+	copy(packet[index:], hPacket)
+	index += m.Header.Size()
+
+	packet[index] = m.Flags
+	index++
+
+	binary.BigEndian.PutUint16(packet[index:], m.TopicId)
+	index += 2
+
+	binary.BigEndian.PutUint16(packet[index:], m.MsgId)
+	index += 2
+
+	packet[index] = m.ReturnCode
+
+	return packet
 }
 
 func (m *SubAck) UnMarshall(packet []byte) {
 }
 
 func (m *SubAck) Size() int {
-	return 0
+	return 8
 }
 
 /*********************************************/

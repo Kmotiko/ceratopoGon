@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 )
 
 func NewAggregatingGateway(config *GatewayConfig) *AggregatingGateway {
@@ -328,15 +329,79 @@ func (g *AggregatingGateway) handlePubComp(conn *net.UDPConn, remote *net.UDPAdd
 /* Subscribe                                 */
 /*********************************************/
 func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
-	// TODO: implement
+	log.Println("handle Subscribe")
 
-	// regist topic to gateway instance
+	// TODO: add lock?
+	// get mqttsn session
+	s, ok := g.MqttSnSessions[remote.String()]
+	if ok == false {
+		// TODO: error handling
+	}
 
 	// if topic include wildcard, set topicId as 0x0000
+	// else regist topic to client-session instance and assign topiId
+	var topicId uint16
+	topicId = uint16(0x0000)
+
+	switch message.TopicIdType(m.Flags) {
+	// if TopicIdType is NORMAL, regist it
+	case message.MQTTSN_TIDT_NORMAL:
+		// check topic is wildcarded or not
+		topics := strings.Split(m.TopicName, "/")
+		if IsWildCarded(topics) != true {
+			topicId = s.StoreTopic(m.TopicName)
+		}
+		subscribers := GetTopicEntry().AppendSubscriber(m.TopicName, s)
+
+		// if first subscribers, send subscribe to broker
+		if len(subscribers) == 1 {
+			qos := message.QosFlag(m.Flags)
+			if token := g.mqttClient.Subscribe(
+				(m.TopicName), byte(qos), g.OnPublish); token.Wait() && token.Error() != nil {
+				// TODO: error handling
+				log.Println("failed to send Subscribe to broker : ", token.Error())
+			}
+		}
+
+	// else if PREDEFINED, get TopicName and Subscribe to Broker
+	case message.MQTTSN_TIDT_PREDEFINED:
+		// get topic name and subscribe to broker
+		topicName, ok := s.Topics.LoadTopic(m.TopicId)
+		if ok != true {
+			// TODO: error handling
+		}
+
+		// Get topicId
+		topicId = m.TopicId
+
+		// PREDEFINED topic will not be wildcarded
+		subscribers := GetTopicEntry().AppendSubscriber(topicName, s)
+
+		// if first subscribers, send subscribe to broker
+		if len(subscribers) == 1 {
+			qos := message.QosFlag(m.Flags)
+			if token := g.mqttClient.Subscribe(
+				(topicName), byte(qos), g.OnPublish); token.Wait() && token.Error() != nil {
+				// TODO: error handling
+				log.Println("failed to send Subscribe to broker : ", token.Error())
+			}
+		}
+
+	// else if SHORT_NAME, subscribe to broker
+	case message.MQTTSN_TIDT_SHORT_NAME:
+		// TODO: implement
+
+		// append to TopicNodes
+	}
 
 	// send subscribe to broker
+	suback := message.NewSubAck(
+		topicId,
+		m.MsgId,
+		message.MQTTSN_RC_ACCEPTED)
 
 	// send suback
+	conn.WriteToUDP(suback.Marshall(), remote)
 }
 
 /*********************************************/
@@ -414,6 +479,32 @@ func (g *AggregatingGateway) handleWillMsgResp(conn *net.UDPConn, remote *net.UD
 /*********************************************/
 // handle message from broker
 func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
-	log.Println("on publish!!!")
-	// TODO: send Publish to MQTT-SN Client
+	log.Println("on publish. Receive message from broker.")
+	// get subscribers
+	topic := msg.Topic()
+	subscribers := GetTopicEntry().GetSubscriber(topic)
+
+	// for each subscriber
+	for _, subscriber := range subscribers {
+		// get topicid
+		topicId, ok := subscriber.LoadTopicId(topic)
+
+		// if not found
+		var m *message.Publish
+		msgId := subscriber.NextMsgId()
+		if !ok {
+			// TODO: implement
+
+			// wildcarded or short topic name
+
+		} else {
+			// process as fixed topicid
+			// qos, retain, topicId, msgId, data
+			m = message.NewPublishNormal(
+				1, false, topicId, msgId, msg.Payload())
+		}
+
+		// send message
+		subscriber.Conn.WriteToUDP(m.Marshall(), subscriber.Remote)
+	}
 }
