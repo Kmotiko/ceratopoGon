@@ -4,6 +4,7 @@ import (
 	"github.com/KMotiko/ceratopogon/messages"
 	"log"
 	"net"
+	"strings"
 	"sync"
 )
 
@@ -313,15 +314,63 @@ func (g *TransportGateway) handlePubComp(conn *net.UDPConn, remote *net.UDPAddr,
 /* Subscribe                                 */
 /*********************************************/
 func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
-	// TODO: implement
+	log.Println("handle Subscribe")
 
-	// regist topic to gateway instance
+	// TODO: add lock?
+	// get mqttsn session
+	s, ok := g.MqttSnSessions[remote.String()]
+	if ok == false {
+		// TODO: error handling
+	}
 
 	// if topic include wildcard, set topicId as 0x0000
+	// else regist topic to client-session instance and assign topiId
+	var topicId uint16
+	topicId = uint16(0x0000)
+
+	switch message.TopicIdType(m.Flags) {
+	// if TopicIdType is NORMAL, regist it
+	case message.MQTTSN_TIDT_NORMAL:
+		// check topic is wildcarded or not
+		topics := strings.Split(m.TopicName, "/")
+		if IsWildCarded(topics) != true {
+			topicId = s.StoreTopic(m.TopicName)
+		}
+
+		// send subscribe to broker
+		mqtt := s.mqttClient
+		qos := message.QosFlag(m.Flags)
+		mqtt.Subscribe(m.TopicName, qos, s.OnPublish)
+
+	// else if PREDEFINED, get TopicName and Subscribe to Broker
+	case message.MQTTSN_TIDT_PREDEFINED:
+		// get topic name and subscribe to broker
+		topicName, ok := s.Topics.LoadTopic(m.TopicId)
+		if ok != true {
+			// TODO: error handling
+		}
+
+		// Get topicId
+		topicId = m.TopicId
+
+		// send subscribe to broker
+		mqtt := s.mqttClient
+		qos := message.QosFlag(m.Flags)
+		mqtt.Subscribe(topicName, qos, s.OnPublish)
+
+	// else if SHORT_NAME, subscribe to broker
+	case message.MQTTSN_TIDT_SHORT_NAME:
+		// TODO: implement
+	}
 
 	// send subscribe to broker
+	suback := message.NewSubAck(
+		topicId,
+		m.MsgId,
+		message.MQTTSN_RC_ACCEPTED)
 
 	// send suback
+	conn.WriteToUDP(suback.Marshall(), remote)
 }
 
 /*********************************************/
@@ -363,7 +412,25 @@ func (g *TransportGateway) handlePingResp(conn *net.UDPConn, remote *net.UDPAddr
 /* DisConnect                                */
 /*********************************************/
 func (g *TransportGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.DisConnect) {
+	log.Println("handle DisConnect")
+
+	// lock
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
 	// TODO: implement
+	if m.Duration > 0 {
+		// TODO: set session state to SLEEP
+	} else {
+		// TODO: set session state to DISCONNECT
+	}
+
+	// TODO: disconnect mqtt connection with broker ?
+
+	// send DisConnect
+	dc := message.NewDisConnect(0)
+	packet := dc.Marshall()
+	conn.WriteToUDP(packet, remote)
 }
 
 /*********************************************/

@@ -1,6 +1,7 @@
 package ceratopogon
 
 import (
+	"github.com/KMotiko/ceratopogon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"net"
@@ -15,9 +16,13 @@ type MqttSnSession struct {
 	Remote   *net.UDPAddr
 	Topics   *TopicMap
 	msgId    [0xffff]bool
+
+	// duration uint16
+	// state bool
 }
 
 type TransportSnSession struct {
+	// mutex    sync.RWMutex
 	MqttSnSession
 	mqttClient MQTT.Client
 	// brokerAddr string
@@ -96,6 +101,32 @@ func (s *TransportSnSession) ConnectToBroker(brokerAddr string, brokerPort int, 
 }
 
 func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
-	log.Println("on publish!!!")
-	// TODO: send Publish to MQTT-SN Client
+	log.Println("on publish. Receive message from broker.")
+	// get subscribers
+	topic := msg.Topic()
+
+	// TODO: check TransportSnSession's state.
+	// if session is sleep, gateway must buffer the message.
+
+	// get topicid
+	topicId, ok := s.LoadTopicId(topic)
+
+	// if not found
+	var m *message.Publish
+	msgId := s.NextMsgId()
+	if !ok {
+		// TODO: implement
+
+		// wildcarded or short topic name
+
+	} else {
+		// process as fixed topicid
+		// qos, retain, topicId, msgId, data
+		// Now, qos is hard coded as 1
+		m = message.NewPublishNormal(
+			1, false, topicId, msgId, msg.Payload())
+	}
+
+	// send message
+	s.Conn.WriteToUDP(m.Marshall(), s.Remote)
 }
