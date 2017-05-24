@@ -148,7 +148,13 @@ func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 	log.Println("handle Connect")
 	// TODO: check connected client is already registerd or not
 
+	// TODO: check cleansession and will flags
+
+	// TODO: support WILLTOPICREQ, WILLMSGREQ if will flag is true
+
 	// create mqtt-sn session instance
+	// Now, MqttSnSession is always recreate when receive Connect.
+	// i.e, ceratopogon act as cleansession equal true.
 	s := NewMqttSnSession(m.ClientId, conn, remote)
 
 	// send conn ack
@@ -394,7 +400,7 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 		// append to TopicNodes
 	}
 
-	// send subscribe to broker
+	// send suback to client
 	suback := message.NewSubAck(
 		topicId,
 		m.MsgId,
@@ -443,7 +449,23 @@ func (g *AggregatingGateway) handlePingResp(conn *net.UDPConn, remote *net.UDPAd
 /* DisConnect                                */
 /*********************************************/
 func (g *AggregatingGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.DisConnect) {
+	log.Println("handle DisConnect")
+
+	// lock
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
 	// TODO: implement
+	if m.Duration > 0 {
+		// TODO: set session state to SLEEP
+	} else {
+		// TODO: set session state to DISCONNECT
+	}
+
+	// send DisConnect
+	dc := message.NewDisConnect(0)
+	packet := dc.Marshall()
+	conn.WriteToUDP(packet, remote)
 }
 
 /*********************************************/
@@ -486,6 +508,9 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 
 	// for each subscriber
 	for _, subscriber := range subscribers {
+		// TODO: check subscriber(MqttSnSession)'s state.
+		// if subscriber is sleep, gateway must buffer the message.
+
 		// get topicid
 		topicId, ok := subscriber.LoadTopicId(topic)
 

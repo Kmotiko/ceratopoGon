@@ -75,7 +75,7 @@ func UnMarshall(packet []byte) (msg MqttSnMessage) {
 		msg = NewPingResp()
 		msg.UnMarshall(packet)
 	case MQTTSNT_DISCONNECT:
-		msg = NewDisConnect()
+		msg = NewDisConnect(0)
 		msg.UnMarshall(packet)
 	case MQTTSNT_WILLTOPICUPD:
 		msg = NewWillTopicUpd()
@@ -876,19 +876,48 @@ func NewPingResp() *MqttSnHeader {
 /*********************************************/
 /* DisConnect                                */
 /*********************************************/
-func NewDisConnect() *DisConnect {
-	return nil
+func NewDisConnect(duration uint16) *DisConnect {
+	length := 2
+	if duration > 0 {
+		length = 4
+	}
+	m := &DisConnect{
+		Header:   MqttSnHeader{uint16(length), MQTTSNT_DISCONNECT},
+		Duration: duration}
+	return m
 }
 
 func (m *DisConnect) Marshall() []byte {
-	return nil
+	index := 0
+	packet := make([]byte, m.Size())
+
+	hPacket := m.Header.Marshall()
+	copy(packet[index:], hPacket)
+	index += m.Header.Size()
+
+	if m.Duration > 0 {
+		binary.BigEndian.PutUint16(packet[index:], m.Duration)
+	}
+
+	return packet
 }
 
 func (m *DisConnect) UnMarshall(packet []byte) {
+	index := 0
+	m.Header.UnMarshall(packet[index:])
+	index += m.Header.Size()
+
+	if m.Header.Length > 2 {
+		m.Duration = binary.BigEndian.Uint16(packet[index:])
+	}
 }
 
 func (m *DisConnect) Size() int {
-	return 0
+	size := 2
+	if m.Duration > 0 {
+		size = 4
+	}
+	return size
 }
 
 /*********************************************/
