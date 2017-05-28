@@ -39,6 +39,10 @@ func (s *MqttSnSession) StoreTopic(topicName string) uint16 {
 	return s.Topics.StoreTopic(topicName)
 }
 
+func (s *MqttSnSession) StoreTopicWithId(topicName string, id uint16) bool {
+	return s.Topics.StoreTopicWithId(topicName, id)
+}
+
 func (s *MqttSnSession) LoadTopic(topicId uint16) (string, bool) {
 	return s.Topics.LoadTopic(topicId)
 }
@@ -60,6 +64,7 @@ func (s *MqttSnSession) NextMsgId() uint16 {
 
 	for i, v := range s.msgId {
 		if !v {
+			s.msgId[i] = true
 			return uint16(i)
 		}
 	}

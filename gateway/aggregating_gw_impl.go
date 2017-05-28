@@ -9,10 +9,12 @@ import (
 	"strings"
 )
 
-func NewAggregatingGateway(config *GatewayConfig) *AggregatingGateway {
+func NewAggregatingGateway(config *GatewayConfig,
+	predefTopics []PredefinedTopics) *AggregatingGateway {
 	g := &AggregatingGateway{
 		MqttSnSessions: make(map[string]*MqttSnSession),
-		Config:         config}
+		Config:         config,
+		predefTopics:   predefTopics}
 	return g
 }
 
@@ -30,10 +32,12 @@ func (g *AggregatingGateway) StartUp() error {
 
 	// connect
 	if token := g.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		log.Println(token.Error())
 		return token.Error()
 	}
 
-	return nil
+	// launch server loop
+	return serverLoop(g, g.Config.Host, g.Config.Port)
 }
 
 func (g *AggregatingGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, packet []byte) {
@@ -146,26 +150,40 @@ func (g *AggregatingGateway) handleGwInfo(conn *net.UDPConn, remote *net.UDPAddr
 /*********************************************/
 func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.Connect) {
 	log.Println("handle Connect")
+	// lock
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
 	// TODO: check connected client is already registerd or not
+	// and cleansession is required or not
 
-	// TODO: check cleansession and will flags
+	// if client is already registerd and cleansession is false
+	// reuse mqtt-sn session
 
-	// TODO: support WILLTOPICREQ, WILLMSGREQ if will flag is true
-
-	// create mqtt-sn session instance
+	// otherwise(cleansession is true or first time to connect)
+	// create new mqtt-sn session instance
 	// Now, MqttSnSession is always recreate when receive Connect.
 	// i.e, ceratopogon act as cleansession equal true.
 	s := NewMqttSnSession(m.ClientId, conn, remote)
+
+	// read predefined topics
+	for _, val := range g.predefTopics {
+		if val.ClientId == m.ClientId {
+			for _, topic := range val.Topics {
+				// apply topic id
+				s.StoreTopicWithId(topic.Name, topic.Id)
+			}
+		}
+	}
+
+	// TODO: check will flags
+	// TODO: support WILLTOPICREQ, WILLMSGREQ if will flag is true
 
 	// send conn ack
 	ack := message.NewConnAck()
 	ack.ReturnCode = message.MQTTSN_RC_ACCEPTED
 	packet := ack.Marshall()
 	conn.WriteToUDP(packet, remote)
-
-	// lock
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
 
 	// add session to map
 	g.MqttSnSessions[remote.String()] = s
@@ -502,6 +520,7 @@ func (g *AggregatingGateway) handleWillMsgResp(conn *net.UDPConn, remote *net.UD
 // handle message from broker
 func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	log.Println("on publish. Receive message from broker.")
+	log.Println(msg.Topic())
 	// get subscribers
 	topic := msg.Topic()
 	subscribers := GetTopicEntry().GetSubscriber(topic)
@@ -519,6 +538,8 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 		msgId := subscriber.NextMsgId()
 		if !ok {
 			// TODO: implement
+			log.Println("[Error] topic id was not found for ", topic, ".")
+			break
 
 			// wildcarded or short topic name
 

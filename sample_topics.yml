@@ -1,0 +1,13 @@
+---
+- ClientId: Client1
+  Topics: 
+    - Name: test1
+      Id: 0
+    - Name: test2
+      Id: 1
+- ClientId: Client2
+  Topics: 
+    - Name: test1
+      Id: 0
+    - Name: test2
+      Id: 1

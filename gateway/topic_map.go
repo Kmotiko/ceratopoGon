@@ -1,33 +1,36 @@
 package ceratopogon
 
 import (
+	"log"
 	"sync"
 )
 
 type TopicMap struct {
 	mutex   sync.RWMutex
 	topics  map[uint16]string
-	topicId uint16
+	topicId *TopicId
 }
 
 func NewTopicMap() *TopicMap {
 	t := &TopicMap{
 		mutex:   sync.RWMutex{},
 		topics:  make(map[uint16]string),
-		topicId: 0}
+		topicId: &TopicId{}}
 	return t
 }
 
-func (t *TopicMap) nextTopicId() uint16 {
+func (t *TopicMap) StoreTopicWithId(topicName string, id uint16) bool {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	t.topicId++
-	if t.topicId == 0xffff {
-		// err
+	ok := t.topicId.EnsureId(id)
+	if !ok {
+		log.Println("[Error] failed to ensure topic id.")
+		return false
 	}
 
-	return t.topicId
+	t.topics[id] = topicName
+	return true
 }
 
 func (t *TopicMap) StoreTopic(topicName string) uint16 {
@@ -40,13 +43,11 @@ func (t *TopicMap) StoreTopic(topicName string) uint16 {
 		}
 	}
 
-	t.topicId++
-	if t.topicId == 0xffff {
-		// err
-	}
+	// get next id
+	id := t.topicId.NextTopicId()
 
-	t.topics[t.topicId] = topicName
-	return t.topicId
+	t.topics[id] = topicName
+	return id
 }
 
 func (t *TopicMap) LoadTopic(topicId uint16) (string, bool) {
@@ -67,4 +68,46 @@ func (t *TopicMap) LoadTopicId(topicName string) (uint16, bool) {
 		}
 	}
 	return 0, false
+}
+
+type TopicId struct {
+	mutex   sync.RWMutex
+	topicId [0xffff]bool
+}
+
+func (t *TopicId) EnsureId(id uint16) bool {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if !t.topicId[id] {
+		t.topicId[id] = true
+		return true
+	}
+
+	return false
+}
+
+func (t *TopicId) NextTopicId() uint16 {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	for i, v := range t.topicId {
+		if v == false {
+			t.topicId[i] = true
+			return uint16(i)
+		}
+	}
+
+	// TODO: error handling
+
+	return 0
+}
+
+func (t *TopicId) FreeTopicId(i uint16) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	t.topicId[i] = false
+
+	return
 }

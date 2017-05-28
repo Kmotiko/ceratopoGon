@@ -8,10 +8,20 @@ import (
 	"sync"
 )
 
-func NewTransportGateway(config *GatewayConfig) *TransportGateway {
+func NewTransportGateway(
+	config *GatewayConfig,
+	predefTopics []PredefinedTopics) *TransportGateway {
 	g := &TransportGateway{
-		sync.RWMutex{}, make(map[string]*TransportSnSession), config}
+		sync.RWMutex{},
+		make(map[string]*TransportSnSession),
+		config,
+		predefTopics}
 	return g
+}
+
+func (g *TransportGateway) StartUp() error {
+	// launch server loop
+	return serverLoop(g, g.Config.Host, g.Config.Port)
 }
 
 func (g *TransportGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, packet []byte) {
@@ -124,10 +134,27 @@ func (g *TransportGateway) handleGwInfo(conn *net.UDPConn, remote *net.UDPAddr, 
 /*********************************************/
 func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.Connect) {
 	log.Println("handle Connect")
-	// TODO: check connected client is aliready registerd or not
+	// TODO: check connected client is already registerd or not
+	// and cleansession is required or not
 
-	// create mqtt-sn session instance
+	// if client is already registerd and cleansession is false
+	// reuse mqtt-sn session
+
+	// otherwise(cleansession is true or first time to connect)
+	// create new mqtt-sn session instance
+	// Now, MqttSnSession is always recreate when receive Connect.
+	// i.e, ceratopogon act as cleansession equal true.
 	s := NewTransportSnSession(m.ClientId, conn, remote)
+
+	// read predefined topics
+	for _, val := range g.predefTopics {
+		if val.ClientId == m.ClientId {
+			for _, topic := range val.Topics {
+				// apply topic id
+				s.StoreTopicWithId(topic.Name, topic.Id)
+			}
+		}
+	}
 
 	// connect to mqtt broker
 	s.ConnectToBroker(
@@ -145,6 +172,8 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 	// lock
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
+
+	// TODO: read predefined topics
 
 	// add session to map
 	g.MqttSnSessions[remote.String()] = s
