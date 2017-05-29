@@ -8,14 +8,18 @@ import (
 type TopicMap struct {
 	mutex   sync.RWMutex
 	topics  map[uint16]string
-	topicId *TopicId
+	topicId *ManagedId
 }
 
 func NewTopicMap() *TopicMap {
 	t := &TopicMap{
 		mutex:   sync.RWMutex{},
 		topics:  make(map[uint16]string),
-		topicId: &TopicId{}}
+		topicId: &ManagedId{}}
+
+	// reserve special id
+	t.topicId.EnsureId(0x0000)
+	t.topicId.EnsureId(0xffff)
 	return t
 }
 
@@ -44,7 +48,7 @@ func (t *TopicMap) StoreTopic(topicName string) uint16 {
 	}
 
 	// get next id
-	id := t.topicId.NextTopicId()
+	id := t.topicId.NextId()
 
 	t.topics[id] = topicName
 	return id
@@ -68,46 +72,4 @@ func (t *TopicMap) LoadTopicId(topicName string) (uint16, bool) {
 		}
 	}
 	return 0, false
-}
-
-type TopicId struct {
-	mutex   sync.RWMutex
-	topicId [0xffff]bool
-}
-
-func (t *TopicId) EnsureId(id uint16) bool {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-
-	if !t.topicId[id] {
-		t.topicId[id] = true
-		return true
-	}
-
-	return false
-}
-
-func (t *TopicId) NextTopicId() uint16 {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-
-	for i, v := range t.topicId {
-		if v == false {
-			t.topicId[i] = true
-			return uint16(i)
-		}
-	}
-
-	// TODO: error handling
-
-	return 0
-}
-
-func (t *TopicId) FreeTopicId(i uint16) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-
-	t.topicId[i] = false
-
-	return
 }

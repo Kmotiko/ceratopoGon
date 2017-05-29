@@ -15,7 +15,7 @@ type MqttSnSession struct {
 	Conn     *net.UDPConn
 	Remote   *net.UDPAddr
 	Topics   *TopicMap
-	msgId    [0xffff]bool
+	msgId    *ManagedId
 
 	// duration uint16
 	// state bool
@@ -31,7 +31,7 @@ type TransportSnSession struct {
 
 func NewMqttSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *MqttSnSession {
 	s := &MqttSnSession{
-		sync.RWMutex{}, id, conn, remote, NewTopicMap(), [0xffff]bool{}}
+		sync.RWMutex{}, id, conn, remote, NewTopicMap(), &ManagedId{}}
 	return s
 }
 
@@ -52,25 +52,11 @@ func (s *MqttSnSession) LoadTopicId(topicName string) (uint16, bool) {
 }
 
 func (s *MqttSnSession) FreeMsgId(i uint16) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.msgId[i] = false
+	s.msgId.FreeId(i)
 }
 
 func (s *MqttSnSession) NextMsgId() uint16 {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	for i, v := range s.msgId {
-		if !v {
-			s.msgId[i] = true
-			return uint16(i)
-		}
-	}
-	// TODO: error handling
-
-	return 0
+	return s.msgId.NextId()
 }
 
 func NewTransportSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *TransportSnSession {
@@ -81,7 +67,7 @@ func NewTransportSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *T
 			conn,
 			remote,
 			NewTopicMap(),
-			[0xffff]bool{}},
+			&ManagedId{}},
 		nil}
 	return s
 }
