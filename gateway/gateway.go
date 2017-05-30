@@ -39,7 +39,7 @@ func serverLoop(gateway Gateway, host string, port int) error {
 		return err
 	}
 
-	buf := make([]byte, 2048)
+	buf := make([]byte, 64*1024)
 	for {
 		_, remote, err := conn.ReadFromUDP(buf)
 		if err != nil {
