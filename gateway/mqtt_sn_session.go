@@ -23,7 +23,7 @@ type MqttSnSession struct {
 
 type TransportSnSession struct {
 	// mutex    sync.RWMutex
-	MqttSnSession
+	*MqttSnSession
 	mqttClient MQTT.Client
 	// brokerAddr string
 	// brokerPort int
@@ -61,7 +61,7 @@ func (s *MqttSnSession) NextMsgId() uint16 {
 
 func NewTransportSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *TransportSnSession {
 	s := &TransportSnSession{
-		MqttSnSession{
+		&MqttSnSession{
 			sync.RWMutex{},
 			id,
 			conn,

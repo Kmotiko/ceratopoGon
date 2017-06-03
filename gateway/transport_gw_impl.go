@@ -293,21 +293,15 @@ func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr,
 
 	// send Publish to Mqtt Broker.
 	// Topic, Qos, Retain, Payload
-	mqtt.Publish(topicName, qos, false, m.Data)
+	token := mqtt.Publish(topicName, qos, false, m.Data)
 
-	if qos == 0 {
-		// if qos 0
-		// nothing to do
-	} else if qos == 1 {
-		// elif qos 1
-		// Create PubAck
-		puback := message.NewPubAck(m.TopicId, m.MsgId, message.MQTTSN_RC_ACCEPTED)
-
-		// send
-		conn.WriteToUDP(puback.Marshall(), remote)
+	if qos == 1 {
+		// if qos 1
+		waitPubAck(token, s.MqttSnSession, m.TopicId, m.MsgId)
 	} else if qos == 2 {
 		// elif qos 2
-		// send PubRec
+		// TODO: send PubRec
+		// TODO: wait PubComp
 	}
 }
 

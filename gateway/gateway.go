@@ -1,7 +1,7 @@
 package ceratopogon
 
 import (
-	//	"github.com/KMotiko/ceratopogon/messages"
+	"github.com/KMotiko/ceratopogon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"net"
 	"strconv"
@@ -49,4 +49,17 @@ func serverLoop(gateway Gateway, host string, port int) error {
 		// launch gateway
 		go gateway.HandlePacket(conn, remote, buf)
 	}
+}
+
+func waitPubAck(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16) {
+	token.Wait()
+	puback := message.NewPubAck(topicId, msgId, message.MQTTSN_RC_ACCEPTED)
+	s.Conn.WriteToUDP(puback.Marshall(), s.Remote)
+}
+
+func waitPubComp(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16) {
+	// TODO: implement
+	// token.Wait()
+	// pubcomp := message.NewPubComp()
+	// s.Conn.WriteToUDP(pubcomp.Marshall(), s.Remote)
 }

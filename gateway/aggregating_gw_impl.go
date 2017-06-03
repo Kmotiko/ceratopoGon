@@ -300,24 +300,16 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 
 	// send Publish to Mqtt Broker.
 	// Topic, Qos, Retain, Payload
-	// TODO: add lock
-	g.mqttClient.Publish(topicName, qos, false, m.Data)
+	// TODO: add lock ?
+	token := g.mqttClient.Publish(topicName, qos, false, m.Data)
 
-	if qos == 0 {
-		// if qos 0
-		// nothing to do
-	} else if qos == 1 {
-		// elif qos 1
-		// Create PubAck
-		puback := message.NewPubAck(m.TopicId, m.MsgId, message.MQTTSN_RC_ACCEPTED)
-
-		// send
-		conn.WriteToUDP(puback.Marshall(), remote)
+	if qos == 1 {
+		// if qos 1
+		go waitPubAck(token, s, m.TopicId, m.MsgId)
 	} else if qos == 2 {
 		// elif qos 2
-		// send PubRec
-
-		// TODO: implement
+		// TODO: send PubRec
+		// TODO: wait PubComp
 	}
 }
 
@@ -520,7 +512,6 @@ func (g *AggregatingGateway) handleWillMsgResp(conn *net.UDPConn, remote *net.UD
 // handle message from broker
 func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	log.Println("on publish. Receive message from broker.")
-	log.Println(msg.Topic())
 	// get subscribers
 	topic := msg.Topic()
 	subscribers := GetTopicEntry().GetSubscriber(topic)
