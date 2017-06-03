@@ -6,7 +6,7 @@ import (
 
 type ManagedId struct {
 	mutex sync.RWMutex
-	id    [0xffff]bool
+	id    [0xffff + 1]bool
 }
 
 func (t *ManagedId) EnsureId(id uint16) bool {
