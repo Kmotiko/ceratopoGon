@@ -10,7 +10,7 @@ import (
 )
 
 func NewAggregatingGateway(config *GatewayConfig,
-	predefTopics []PredefinedTopics) *AggregatingGateway {
+	predefTopics PredefinedTopics) *AggregatingGateway {
 	g := &AggregatingGateway{
 		MqttSnSessions: make(map[string]*MqttSnSession),
 		Config:         config,
@@ -167,12 +167,9 @@ func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 	s := NewMqttSnSession(m.ClientId, conn, remote)
 
 	// read predefined topics
-	for _, val := range g.predefTopics {
-		if val.ClientId == m.ClientId {
-			for _, topic := range val.Topics {
-				// apply topic id
-				s.StoreTopicWithId(topic.Name, topic.Id)
-			}
+	if topics, ok := g.predefTopics[m.ClientId]; ok {
+		for key, value := range topics {
+			s.StoreTopicWithId(key, value)
 		}
 	}
 

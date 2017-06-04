@@ -21,7 +21,7 @@ func initialize() (ceratopogon.Gateway, error) {
 	}
 
 	// parse topic file
-	var topics []ceratopogon.PredefinedTopics
+	var topics ceratopogon.PredefinedTopics
 	if topicFile != "" {
 		topics, err = ceratopogon.LoadPredefinedTopics(topicFile)
 		if err != nil {

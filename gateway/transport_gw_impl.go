@@ -10,7 +10,7 @@ import (
 
 func NewTransportGateway(
 	config *GatewayConfig,
-	predefTopics []PredefinedTopics) *TransportGateway {
+	predefTopics PredefinedTopics) *TransportGateway {
 	g := &TransportGateway{
 		sync.RWMutex{},
 		make(map[string]*TransportSnSession),
@@ -147,12 +147,9 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 	s := NewTransportSnSession(m.ClientId, conn, remote)
 
 	// read predefined topics
-	for _, val := range g.predefTopics {
-		if val.ClientId == m.ClientId {
-			for _, topic := range val.Topics {
-				// apply topic id
-				s.StoreTopicWithId(topic.Name, topic.Id)
-			}
+	if topics, ok := g.predefTopics[m.ClientId]; ok {
+		for key, value := range topics {
+			s.StoreTopicWithId(key, value)
 		}
 	}
 

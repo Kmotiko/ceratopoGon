@@ -18,7 +18,7 @@ type AggregatingGateway struct {
 	MqttSnSessions map[string]*MqttSnSession
 	Config         *GatewayConfig
 	mqttClient     MQTT.Client
-	predefTopics   []PredefinedTopics
+	predefTopics   PredefinedTopics
 	// sendBuffer     chan *message.MqttSnMessage
 	// topics Topic
 }
@@ -27,7 +27,7 @@ type TransportGateway struct {
 	mutex          sync.RWMutex
 	MqttSnSessions map[string]*TransportSnSession
 	Config         *GatewayConfig
-	predefTopics   []PredefinedTopics
+	predefTopics   PredefinedTopics
 }
 
 func serverLoop(gateway Gateway, host string, port int) error {

@@ -6,18 +6,10 @@ import (
 	"log"
 )
 
-type PredefinedTopicNode struct {
-	Name string `yaml:"Name"`
-	Id   uint16 `yaml:"Id"`
-}
+type PredefinedTopics map[string]map[string]uint16
 
-type PredefinedTopics struct {
-	ClientId string                `yaml:"ClientId"`
-	Topics   []PredefinedTopicNode `yaml:"Topics"`
-}
-
-func LoadPredefinedTopics(file string) ([]PredefinedTopics, error) {
-	topics := make([]PredefinedTopics, 0)
+func LoadPredefinedTopics(file string) (PredefinedTopics, error) {
+	topics := PredefinedTopics{}
 
 	yamlStr, err := ioutil.ReadFile(file)
 	if err != nil {

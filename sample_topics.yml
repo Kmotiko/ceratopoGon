@@ -1,13 +1,8 @@
 ---
-- ClientId: Client1
-  Topics: 
-    - Name: test1
-      Id: 0
-    - Name: test2
-      Id: 1
-- ClientId: Client2
-  Topics: 
-    - Name: test1
-      Id: 0
-    - Name: test2
-      Id: 1
+Client1:
+  test1: 1 
+  test2: 2
+Client2:
+  test1: 1 
+  test2: 2
+
