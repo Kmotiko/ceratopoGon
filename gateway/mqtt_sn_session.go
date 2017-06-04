@@ -48,6 +48,9 @@ func (s *MqttSnSession) LoadTopic(topicId uint16) (string, bool) {
 }
 
 func (s *MqttSnSession) LoadTopicId(topicName string) (uint16, bool) {
+	log.Println(s)
+	log.Println(s.Topics)
+	log.Println(topicName)
 	return s.Topics.LoadTopicId(topicName)
 }
 

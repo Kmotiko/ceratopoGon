@@ -134,22 +134,37 @@ func (g *TransportGateway) handleGwInfo(conn *net.UDPConn, remote *net.UDPAddr, 
 /*********************************************/
 func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.Connect) {
 	log.Println("handle Connect")
-	// TODO: check connected client is already registerd or not
+	// lock
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
+	var s *TransportSnSession = nil
+
+	// check connected client is already registerd or not
 	// and cleansession is required or not
+	for _, val := range g.MqttSnSessions {
+		if val.ClientId == m.ClientId {
+			s = val
+		}
+	}
 
 	// if client is already registerd and cleansession is false
 	// reuse mqtt-sn session
+	if s != nil && !message.HasCleanSessionFlag(m.Flags) {
+		delete(g.MqttSnSessions, s.Remote.String())
+		s.Remote = remote
+		s.Conn = conn
+	} else {
+		log.Println("create session")
+		// otherwise(cleansession is true or first time to connect)
+		// create new mqtt-sn session instance
+		s := NewTransportSnSession(m.ClientId, conn, remote)
 
-	// otherwise(cleansession is true or first time to connect)
-	// create new mqtt-sn session instance
-	// Now, MqttSnSession is always recreate when receive Connect.
-	// i.e, ceratopogon act as cleansession equal true.
-	s := NewTransportSnSession(m.ClientId, conn, remote)
-
-	// read predefined topics
-	if topics, ok := g.predefTopics[m.ClientId]; ok {
-		for key, value := range topics {
-			s.StoreTopicWithId(key, value)
+		// read predefined topics
+		if topics, ok := g.predefTopics[m.ClientId]; ok {
+			for key, value := range topics {
+				s.StoreTopicWithId(key, value)
+			}
 		}
 	}
 

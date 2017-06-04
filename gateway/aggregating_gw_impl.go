@@ -154,22 +154,33 @@ func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
-	// TODO: check connected client is already registerd or not
+	var s *MqttSnSession = nil
+
+	// check connected client is already registerd or not
 	// and cleansession is required or not
+	for _, val := range g.MqttSnSessions {
+		if val.ClientId == m.ClientId {
+			s = val
+		}
+	}
 
 	// if client is already registerd and cleansession is false
 	// reuse mqtt-sn session
+	if s != nil && !message.HasCleanSessionFlag(m.Flags) {
+		delete(g.MqttSnSessions, s.Remote.String())
+		s.Remote = remote
+		s.Conn = conn
+	} else {
+		log.Println("create session")
+		// otherwise(cleansession is true or first time to connect)
+		// create new mqtt-sn session instance
+		s = NewMqttSnSession(m.ClientId, conn, remote)
 
-	// otherwise(cleansession is true or first time to connect)
-	// create new mqtt-sn session instance
-	// Now, MqttSnSession is always recreate when receive Connect.
-	// i.e, ceratopogon act as cleansession equal true.
-	s := NewMqttSnSession(m.ClientId, conn, remote)
-
-	// read predefined topics
-	if topics, ok := g.predefTopics[m.ClientId]; ok {
-		for key, value := range topics {
-			s.StoreTopicWithId(key, value)
+		// read predefined topics
+		if topics, ok := g.predefTopics[m.ClientId]; ok {
+			for key, value := range topics {
+				s.StoreTopicWithId(key, value)
+			}
 		}
 	}
 
@@ -226,6 +237,9 @@ func (g *AggregatingGateway) handleWillMsg(conn *net.UDPConn, remote *net.UDPAdd
 /*********************************************/
 func (g *AggregatingGateway) handleRegister(conn *net.UDPConn, remote *net.UDPAddr, m *message.Register) {
 	log.Println("handle Register")
+	// lock
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
 
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
@@ -263,6 +277,9 @@ func (g *AggregatingGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr
 /*********************************************/
 func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr, m *message.Publish) {
 	log.Println("handle Publish")
+	// lock
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
 
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
