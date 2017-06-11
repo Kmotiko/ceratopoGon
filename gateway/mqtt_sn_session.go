@@ -48,9 +48,6 @@ func (s *MqttSnSession) LoadTopic(topicId uint16) (string, bool) {
 }
 
 func (s *MqttSnSession) LoadTopicId(topicName string) (uint16, bool) {
-	log.Println(s)
-	log.Println(s.Topics)
-	log.Println(topicName)
 	return s.Topics.LoadTopicId(topicName)
 }
 
@@ -96,7 +93,7 @@ func (s *TransportSnSession) ConnectToBroker(brokerAddr string, brokerPort int, 
 
 func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	log.Println("on publish. Receive message from broker.")
-	// get subscribers
+	// get topic
 	topic := msg.Topic()
 
 	// TODO: check TransportSnSession's state.
@@ -110,6 +107,8 @@ func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	msgId := s.NextMsgId()
 	if !ok {
 		// TODO: implement
+		log.Println("[Error] topic id was not found for ", topic, ".")
+		return
 
 		// wildcarded or short topic name
 

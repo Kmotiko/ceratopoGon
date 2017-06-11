@@ -288,7 +288,8 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 	}
 
 	var topicName string
-	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
+	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_NORMAL ||
+		message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
 		// search topic name from topic id
 		topicName, ok = s.LoadTopic(m.TopicId)
 		if ok == false {
@@ -307,6 +308,7 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 		topicName = m.TopicName
 	} else {
 		log.Println("ERROR : invalid TopicIdType ", message.TopicIdType(m.Flags))
+		return
 	}
 
 	// get qos
@@ -544,7 +546,7 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 		if !ok {
 			// TODO: implement
 			log.Println("[Error] topic id was not found for ", topic, ".")
-			break
+			continue
 
 			// wildcarded or short topic name
 
