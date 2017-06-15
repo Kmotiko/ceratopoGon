@@ -1,7 +1,7 @@
-package ceratopogon
+package ceratopoGon
 
 import (
-	"github.com/KMotiko/ceratopogon/messages"
+	"github.com/Kmotiko/ceratopoGon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"net"

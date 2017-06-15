@@ -1,4 +1,4 @@
-package ceratopogon
+package ceratopoGon
 
 import (
 	"gopkg.in/yaml.v2"

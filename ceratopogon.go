@@ -3,11 +3,11 @@ package main
 import (
 	"errors"
 	"flag"
-	"github.com/KMotiko/ceratopogon/gateway"
+	"github.com/Kmotiko/ceratopoGon/gateway"
 	"log"
 )
 
-func initialize() (ceratopogon.Gateway, error) {
+func initialize() (ceratopoGon.Gateway, error) {
 	var confFile string
 	var topicFile string
 	flag.StringVar(&confFile, "c", "ceratopogon.conf", "config file path")
@@ -15,32 +15,32 @@ func initialize() (ceratopogon.Gateway, error) {
 	flag.Parse()
 
 	// parse config
-	config, err := ceratopogon.ParseConfig(confFile)
+	config, err := ceratopoGon.ParseConfig(confFile)
 	if err != nil {
 		return nil, err
 	}
 
 	// parse topic file
-	var topics ceratopogon.PredefinedTopics
+	var topics ceratopoGon.PredefinedTopics
 	if topicFile != "" {
-		topics, err = ceratopogon.LoadPredefinedTopics(topicFile)
+		topics, err = ceratopoGon.LoadPredefinedTopics(topicFile)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// initialize logger
-	err = ceratopogon.InitLogger(config.LogFilePath)
+	err = ceratopoGon.InitLogger(config.LogFilePath)
 	if err != nil {
 		return nil, err
 	}
 
 	// create Gateway
-	var gateway ceratopogon.Gateway
+	var gateway ceratopoGon.Gateway
 	if config.IsAggregate {
-		gateway = ceratopogon.NewAggregatingGateway(config, topics)
+		gateway = ceratopoGon.NewAggregatingGateway(config, topics)
 	} else {
-		gateway = ceratopogon.NewTransportGateway(config, topics)
+		gateway = ceratopoGon.NewTransportGateway(config, topics)
 	}
 
 	return gateway, nil
