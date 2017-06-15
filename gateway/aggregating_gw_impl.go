@@ -50,77 +50,77 @@ func (g *AggregatingGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr
 		switch mi.MsgType {
 		case message.MQTTSNT_WILLTOPICREQ:
 			// WillTopicReq
-			g.handleWillTopicReq(conn, remote, mi)
+			go g.handleWillTopicReq(conn, remote, mi)
 		case message.MQTTSNT_WILLMSGREQ:
 			// WillMsgReq
-			g.handleWillMsgReq(conn, remote, mi)
+			go g.handleWillMsgReq(conn, remote, mi)
 		case message.MQTTSNT_PINGREQ:
 			// PingResp
-			g.handlePingResp(conn, remote, mi)
+			go g.handlePingResp(conn, remote, mi)
 		}
 	case *message.Advertise:
-		g.handleAdvertise(conn, remote, mi)
+		go g.handleAdvertise(conn, remote, mi)
 	case *message.SearchGw:
-		g.handleSearchGw(conn, remote, mi)
+		go g.handleSearchGw(conn, remote, mi)
 	case *message.GwInfo:
-		g.handleGwInfo(conn, remote, mi)
+		go g.handleGwInfo(conn, remote, mi)
 	case *message.Connect:
-		g.handleConnect(conn, remote, mi)
+		go g.handleConnect(conn, remote, mi)
 	case *message.ConnAck:
-		g.handleConnAck(conn, remote, mi)
+		go g.handleConnAck(conn, remote, mi)
 	case *message.WillTopic:
-		g.handleWillTopic(conn, remote, mi)
+		go g.handleWillTopic(conn, remote, mi)
 	case *message.WillMsg:
-		g.handleWillMsg(conn, remote, mi)
+		go g.handleWillMsg(conn, remote, mi)
 	case *message.Register:
-		g.handleRegister(conn, remote, mi)
+		go g.handleRegister(conn, remote, mi)
 	case *message.RegAck:
-		g.handleRegAck(conn, remote, mi)
+		go g.handleRegAck(conn, remote, mi)
 	case *message.Publish:
-		g.handlePublish(conn, remote, mi)
+		go g.handlePublish(conn, remote, mi)
 	case *message.PubAck:
-		g.handlePubAck(conn, remote, mi)
+		go g.handlePubAck(conn, remote, mi)
 	case *message.PubRec:
 		switch mi.Header.MsgType {
 		case message.MQTTSNT_PUBREC:
-			g.handlePubRec(conn, remote, mi)
+			go g.handlePubRec(conn, remote, mi)
 		case message.MQTTSNT_PUBCOMP:
 			//PubComp:
-			g.handlePubComp(conn, remote, mi)
+			go g.handlePubComp(conn, remote, mi)
 		case message.MQTTSNT_PUBREL:
 			//PubRel:
-			g.handlePubRel(conn, remote, mi)
+			go g.handlePubRel(conn, remote, mi)
 		}
 	case *message.Subscribe:
 		switch mi.Header.MsgType {
 		case message.MQTTSNT_SUBSCRIBE:
 			// Subscribe
-			g.handleSubscribe(conn, remote, mi)
+			go g.handleSubscribe(conn, remote, mi)
 		case message.MQTTSNT_UNSUBSCRIBE:
 			// UnSubscribe
-			g.handleUnSubscribe(conn, remote, mi)
+			go g.handleUnSubscribe(conn, remote, mi)
 		}
 	case *message.SubAck:
-		g.handleSubAck(conn, remote, mi)
+		go g.handleSubAck(conn, remote, mi)
 	case *message.UnSubAck:
-		g.handleUnSubAck(conn, remote, mi)
+		go g.handleUnSubAck(conn, remote, mi)
 	case *message.PingReq:
-		g.handlePingReq(conn, remote, mi)
+		go g.handlePingReq(conn, remote, mi)
 	case *message.DisConnect:
-		g.handleDisConnect(conn, remote, mi)
+		go g.handleDisConnect(conn, remote, mi)
 	case *message.WillTopicUpd:
-		g.handleWillTopicUpd(conn, remote, mi)
+		go g.handleWillTopicUpd(conn, remote, mi)
 	case *message.WillTopicResp:
 		switch mi.Header.MsgType {
 		case message.MQTTSNT_WILLTOPICRESP:
 			// WillTopicResp
-			g.handleWillTopicResp(conn, remote, mi)
+			go g.handleWillTopicResp(conn, remote, mi)
 		case message.MQTTSNT_WILLMSGRESP:
 			// WillMsgResp
-			g.handleWillMsgResp(conn, remote, mi)
+			go g.handleWillMsgResp(conn, remote, mi)
 		}
 	case *message.WillMsgUpd:
-		g.handleWillMsgUpd(conn, remote, mi)
+		go g.handleWillMsgUpd(conn, remote, mi)
 	}
 }
 

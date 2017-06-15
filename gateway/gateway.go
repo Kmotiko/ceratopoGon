@@ -47,7 +47,7 @@ func serverLoop(gateway Gateway, host string, port int) error {
 		}
 
 		// launch gateway
-		go gateway.HandlePacket(conn, remote, buf)
+		gateway.HandlePacket(conn, remote, buf)
 	}
 }
 
