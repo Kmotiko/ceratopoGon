@@ -171,9 +171,13 @@ func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 		s.Remote = remote
 		s.Conn = conn
 	} else {
-		log.Println("create session")
 		// otherwise(cleansession is true or first time to connect)
 		// create new mqtt-sn session instance
+		if s != nil {
+			delete(g.MqttSnSessions, s.Remote.String())
+		}
+
+		// create new session
 		s = NewMqttSnSession(m.ClientId, conn, remote)
 
 		// read predefined topics
@@ -284,7 +288,8 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
-		// TODO: error handling
+		log.Println("ERROR : MqttSn session not found for remote", remote.String())
+		return
 	}
 
 	var topicName string

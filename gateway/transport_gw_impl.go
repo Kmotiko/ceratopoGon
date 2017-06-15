@@ -155,9 +155,13 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 		s.Remote = remote
 		s.Conn = conn
 	} else {
-		log.Println("create session")
 		// otherwise(cleansession is true or first time to connect)
 		// create new mqtt-sn session instance
+		if s != nil {
+			delete(g.MqttSnSessions, s.Remote.String())
+		}
+
+		// create new session
 		s := NewTransportSnSession(m.ClientId, conn, remote)
 
 		// read predefined topics
@@ -272,7 +276,8 @@ func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr,
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
-		// TODO: error handling
+		log.Println("ERROR : MqttSn session not found for remote", remote.String())
+		return
 	}
 
 	var topicName string
