@@ -10,12 +10,13 @@ import (
 )
 
 type MqttSnSession struct {
-	mutex    sync.RWMutex
-	ClientId string
-	Conn     *net.UDPConn
-	Remote   *net.UDPAddr
-	Topics   *TopicMap
-	msgId    *ManagedId
+	mutex        sync.RWMutex
+	ClientId     string
+	Conn         *net.UDPConn
+	Remote       *net.UDPAddr
+	Topics       *TopicMap
+	PredefTopics *TopicMap
+	msgId        *ManagedId
 
 	// duration uint16
 	// state bool
@@ -31,7 +32,13 @@ type TransportSnSession struct {
 
 func NewMqttSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *MqttSnSession {
 	s := &MqttSnSession{
-		sync.RWMutex{}, id, conn, remote, NewTopicMap(), &ManagedId{}}
+		sync.RWMutex{},
+		id,
+		conn,
+		remote,
+		NewTopicMap(),
+		NewTopicMap(),
+		&ManagedId{}}
 	return s
 }
 
@@ -51,6 +58,21 @@ func (s *MqttSnSession) LoadTopicId(topicName string) (uint16, bool) {
 	return s.Topics.LoadTopicId(topicName)
 }
 
+func (s *MqttSnSession) StorePredefTopic(topicName string) uint16 {
+	return s.PredefTopics.StoreTopic(topicName)
+}
+
+func (s *MqttSnSession) StorePredefTopicWithId(topicName string, id uint16) bool {
+	return s.PredefTopics.StoreTopicWithId(topicName, id)
+}
+
+func (s *MqttSnSession) LoadPredefTopic(topicId uint16) (string, bool) {
+	return s.PredefTopics.LoadTopic(topicId)
+}
+
+func (s *MqttSnSession) LoadPredefTopicId(topicName string) (uint16, bool) {
+	return s.PredefTopics.LoadTopicId(topicName)
+}
 func (s *MqttSnSession) FreeMsgId(i uint16) {
 	s.msgId.FreeId(i)
 }
@@ -66,6 +88,7 @@ func NewTransportSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *T
 			id,
 			conn,
 			remote,
+			NewTopicMap(),
 			NewTopicMap(),
 			&ManagedId{}},
 		nil}
@@ -99,25 +122,28 @@ func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	// TODO: check TransportSnSession's state.
 	// if session is sleep, gateway must buffer the message.
 
-	// get topicid
-	topicId, ok := s.LoadTopicId(topic)
-
-	// if not found
 	var m *message.Publish
 	msgId := s.NextMsgId()
-	if !ok {
-		// TODO: implement
-		log.Println("[Error] topic id was not found for ", topic, ".")
-		return
 
-		// wildcarded or short topic name
-
-	} else {
+	// get predef topicid
+	topicId, ok := s.LoadPredefTopicId(topic)
+	if ok {
+		// process as predef topicid
+		// qos, retain, topicId, msgId, data
+		// Now, qos is hard coded as 1
+		m = message.NewPublishPredefined(
+			1, false, topicId, msgId, msg.Payload())
+	} else if topicId, ok = s.LoadTopicId(topic); ok {
 		// process as fixed topicid
 		// qos, retain, topicId, msgId, data
 		// Now, qos is hard coded as 1
 		m = message.NewPublishNormal(
 			1, false, topicId, msgId, msg.Payload())
+	} else {
+		// TODO: implement wildcarded or short topic route
+
+		log.Println("[Warn] topic id was not found for ", topic, ".")
+		return
 	}
 
 	// send message

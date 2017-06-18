@@ -527,7 +527,7 @@ func (m *RegAck) Marshall() []byte {
 func (m *RegAck) UnMarshall(packet []byte) {
 	index := 0
 	m.Header.UnMarshall(packet[index:])
-	m.Header.Size()
+	index += m.Header.Size()
 
 	m.TopicId = binary.BigEndian.Uint16(packet[index:])
 	index += 2
@@ -635,7 +635,8 @@ func (m *Publish) UnMarshall(packet []byte) {
 	m.Flags = packet[index]
 	index++
 
-	if TopicIdType(m.Flags) == MQTTSN_TIDT_PREDEFINED {
+	if TopicIdType(m.Flags) == MQTTSN_TIDT_NORMAL ||
+		TopicIdType(m.Flags) == MQTTSN_TIDT_PREDEFINED {
 		m.TopicId = binary.BigEndian.Uint16(packet[index:])
 	} else if TopicIdType(m.Flags) == MQTTSN_TIDT_SHORT_NAME {
 		m.TopicName = string(packet[index : index+2])

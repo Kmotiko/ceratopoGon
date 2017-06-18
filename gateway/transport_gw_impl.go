@@ -162,12 +162,12 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 		}
 
 		// create new session
-		s := NewTransportSnSession(m.ClientId, conn, remote)
+		s = NewTransportSnSession(m.ClientId, conn, remote)
 
 		// read predefined topics
 		if topics, ok := g.predefTopics[m.ClientId]; ok {
 			for key, value := range topics {
-				s.StoreTopicWithId(key, value)
+				s.StorePredefTopicWithId(key, value)
 			}
 		}
 	}
@@ -179,20 +179,14 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 		g.Config.BrokerUser,
 		g.Config.BrokerPassword)
 
+	// add session to map
+	g.MqttSnSessions[remote.String()] = s
+
 	// send conn ack
 	ack := message.NewConnAck()
 	ack.ReturnCode = message.MQTTSN_RC_ACCEPTED
 	packet := ack.Marshall()
 	conn.WriteToUDP(packet, remote)
-
-	// lock
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
-
-	// TODO: read predefined topics
-
-	// add session to map
-	g.MqttSnSessions[remote.String()] = s
 }
 
 /*********************************************/
@@ -237,10 +231,14 @@ func (g *TransportGateway) handleRegister(conn *net.UDPConn, remote *net.UDPAddr
 	log.Println("handle Register")
 
 	// get mqttsn session
+	g.mutex.Lock()
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
-		// TODO: error handling
+		log.Println("ERROR : MqttSn session not found for remote", remote.String())
+		g.mutex.Unlock()
+		return
 	}
+	g.mutex.Unlock()
 
 	// search topicid
 	topicId, ok := s.LoadTopicId(m.TopicName)
@@ -274,17 +272,34 @@ func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr,
 	log.Println("handle Publish")
 
 	// get mqttsn session
+	g.mutex.Lock()
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
 		log.Println("ERROR : MqttSn session not found for remote", remote.String())
+		g.mutex.Unlock()
 		return
 	}
+	g.mutex.Unlock()
 
 	var topicName string
-	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_NORMAL ||
-		message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
+	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_NORMAL {
 		// search topic name from topic id
 		topicName, ok = s.LoadTopic(m.TopicId)
+		if ok == false {
+			// error handling
+			log.Println("ERROR : topic was not found.")
+			puback := message.NewPubAck(
+				m.TopicId,
+				m.MsgId,
+				message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID)
+			// send
+			conn.WriteToUDP(puback.Marshall(), remote)
+
+			return
+		}
+	} else if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
+		// search topic name from topic id
+		topicName, ok = s.LoadPredefTopic(m.TopicId)
 		if ok == false {
 			// error handling
 			log.Println("ERROR : topic was not found.")
@@ -362,13 +377,17 @@ func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAdd
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
-		// TODO: error handling
+		log.Println("ERROR : MqttSn session not found for remote", remote.String())
+		return
 	}
 
 	// if topic include wildcard, set topicId as 0x0000
 	// else regist topic to client-session instance and assign topiId
 	var topicId uint16
 	topicId = uint16(0x0000)
+
+	// return code
+	var rc byte = message.MQTTSN_RC_ACCEPTED
 
 	switch message.TopicIdType(m.Flags) {
 	// if TopicIdType is NORMAL, regist it
@@ -386,14 +405,15 @@ func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAdd
 
 	// else if PREDEFINED, get TopicName and Subscribe to Broker
 	case message.MQTTSN_TIDT_PREDEFINED:
-		// get topic name and subscribe to broker
-		topicName, ok := s.Topics.LoadTopic(m.TopicId)
-		if ok != true {
-			// TODO: error handling
-		}
-
 		// Get topicId
 		topicId = m.TopicId
+
+		// get topic name and subscribe to broker
+		topicName, ok := s.LoadPredefTopic(topicId)
+		if ok != true {
+			// TODO: error handling
+			rc = message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID
+		}
 
 		// send subscribe to broker
 		mqtt := s.mqttClient
@@ -409,7 +429,7 @@ func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAdd
 	suback := message.NewSubAck(
 		topicId,
 		m.MsgId,
-		message.MQTTSN_RC_ACCEPTED)
+		rc)
 
 	// send suback
 	conn.WriteToUDP(suback.Marshall(), remote)

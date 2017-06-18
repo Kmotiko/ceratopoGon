@@ -7,7 +7,7 @@ import (
 
 var topicEntry *Topics = &Topics{
 	topicRoot:  NewTopicNode(),
-	topicIndex: make(map[string][]*MqttSnSession, 0)}
+	topicIndex: make(map[string][]*Subscriber, 0)}
 
 func GetTopicEntry() *Topics {
 	return topicEntry
@@ -17,14 +17,19 @@ func GetTopicEntry() *Topics {
 type Topics struct {
 	mutex      sync.RWMutex
 	topicRoot  *TopicNode
-	topicIndex map[string][]*MqttSnSession // fixed topic. map topicname to subscribers
+	topicIndex map[string][]*Subscriber // fixed topic. map topicname to subscribers
 }
 
 // Topic Node of Topic Tree
 type TopicNode struct {
 	// mutex       sync.RWMutex
 	children    map[string]*TopicNode
-	subscribers []*MqttSnSession
+	subscribers []*Subscriber
+}
+
+type Subscriber struct {
+	Session *MqttSnSession
+	TidType byte
 }
 
 // ctor
@@ -44,14 +49,14 @@ func IsWildCarded(topic []string) bool {
 }
 
 // search subscribers
-func (t *Topics) GetSubscriber(topic string) []*MqttSnSession {
+func (t *Topics) GetSubscriber(topic string) []*Subscriber {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
 	// search from index
 	subscribers := t.topicIndex[topic]
 	if subscribers == nil {
-		subscribers = make([]*MqttSnSession, 0)
+		subscribers = make([]*Subscriber, 0)
 	}
 
 	return subscribers
@@ -61,13 +66,17 @@ func (t *Topics) GetSubscriber(topic string) []*MqttSnSession {
 // @return amount of subscriber
 func (t *Topics) AppendSubscriber(
 	topic string,
-	subscriber *MqttSnSession) (subscribers []*MqttSnSession) {
+	session *MqttSnSession,
+	tidType byte) (subscribers []*Subscriber) {
 	// Lock
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
 	// split topic
 	topics := strings.Split(topic, "/")
+
+	// create subscriber
+	subscriber := &Subscriber{session, tidType}
 
 	// if is wildcarded
 	if wildcarded := IsWildCarded(topics); wildcarded == true {
@@ -94,7 +103,7 @@ func (t *Topics) AppendSubscriber(
 		// add subscriber
 		subscribers = t.topicIndex[topic]
 		if subscribers == nil {
-			subscribers = make([]*MqttSnSession, 0)
+			subscribers = make([]*Subscriber, 0)
 		}
 		subscribers = append(subscribers, subscriber)
 		t.topicIndex[topic] = subscribers

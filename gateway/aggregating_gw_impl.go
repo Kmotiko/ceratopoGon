@@ -183,7 +183,7 @@ func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 		// read predefined topics
 		if topics, ok := g.predefTopics[m.ClientId]; ok {
 			for key, value := range topics {
-				s.StoreTopicWithId(key, value)
+				s.StorePredefTopicWithId(key, value)
 			}
 		}
 	}
@@ -191,14 +191,14 @@ func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 	// TODO: check will flags
 	// TODO: support WILLTOPICREQ, WILLMSGREQ if will flag is true
 
+	// add session to map
+	g.MqttSnSessions[remote.String()] = s
+
 	// send conn ack
 	ack := message.NewConnAck()
 	ack.ReturnCode = message.MQTTSN_RC_ACCEPTED
 	packet := ack.Marshall()
 	conn.WriteToUDP(packet, remote)
-
-	// add session to map
-	g.MqttSnSessions[remote.String()] = s
 }
 
 /*********************************************/
@@ -293,10 +293,24 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 	}
 
 	var topicName string
-	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_NORMAL ||
-		message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
+	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_NORMAL {
 		// search topic name from topic id
 		topicName, ok = s.LoadTopic(m.TopicId)
+		if ok == false {
+			// error handling
+			log.Println("ERROR : topic was not found.")
+			puback := message.NewPubAck(
+				m.TopicId,
+				m.MsgId,
+				message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID)
+			// send
+			conn.WriteToUDP(puback.Marshall(), remote)
+
+			return
+		}
+	} else if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
+		// search topic name from topic id
+		topicName, ok = s.LoadPredefTopic(m.TopicId)
 		if ok == false {
 			// error handling
 			log.Println("ERROR : topic was not found.")
@@ -368,17 +382,23 @@ func (g *AggregatingGateway) handlePubComp(conn *net.UDPConn, remote *net.UDPAdd
 func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
 	log.Println("handle Subscribe")
 
-	// TODO: add lock?
 	// get mqttsn session
+	g.mutex.Lock()
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
-		// TODO: error handling
+		log.Println("ERROR : MqttSn session not found for remote", remote.String())
+		g.mutex.Unlock()
+		return
 	}
+	g.mutex.Unlock()
 
 	// if topic include wildcard, set topicId as 0x0000
 	// else regist topic to client-session instance and assign topiId
 	var topicId uint16
 	topicId = uint16(0x0000)
+
+	// return code
+	var rc byte = message.MQTTSN_RC_ACCEPTED
 
 	switch message.TopicIdType(m.Flags) {
 	// if TopicIdType is NORMAL, regist it
@@ -388,7 +408,10 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 		if IsWildCarded(topics) != true {
 			topicId = s.StoreTopic(m.TopicName)
 		}
-		subscribers := GetTopicEntry().AppendSubscriber(m.TopicName, s)
+		subscribers := GetTopicEntry().AppendSubscriber(
+			m.TopicName,
+			s,
+			message.MQTTSN_TIDT_NORMAL)
 
 		// if first subscribers, send subscribe to broker
 		if len(subscribers) == 1 {
@@ -406,13 +429,17 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 		topicName, ok := s.Topics.LoadTopic(m.TopicId)
 		if ok != true {
 			// TODO: error handling
+			rc = message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID
 		}
 
 		// Get topicId
 		topicId = m.TopicId
 
 		// PREDEFINED topic will not be wildcarded
-		subscribers := GetTopicEntry().AppendSubscriber(topicName, s)
+		subscribers := GetTopicEntry().AppendSubscriber(
+			topicName,
+			s,
+			message.MQTTSN_TIDT_PREDEFINED)
 
 		// if first subscribers, send subscribe to broker
 		if len(subscribers) == 1 {
@@ -435,7 +462,7 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 	suback := message.NewSubAck(
 		topicId,
 		m.MsgId,
-		message.MQTTSN_RC_ACCEPTED)
+		rc)
 
 	// send suback
 	conn.WriteToUDP(suback.Marshall(), remote)
@@ -542,27 +569,55 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 		// TODO: check subscriber(MqttSnSession)'s state.
 		// if subscriber is sleep, gateway must buffer the message.
 
-		// get topicid
-		topicId, ok := subscriber.LoadTopicId(topic)
-
-		// if not found
 		var m *message.Publish
-		msgId := subscriber.NextMsgId()
-		if !ok {
-			// TODO: implement
-			log.Println("[Error] topic id was not found for ", topic, ".")
-			continue
+		session := subscriber.Session
 
-			// wildcarded or short topic name
+		// get TopicID Type
+		tidType := subscriber.TidType
+		switch tidType {
+		case message.MQTTSN_TIDT_NORMAL:
+			// get topicid
+			topicId, ok := session.LoadTopicId(topic)
 
-		} else {
-			// process as fixed topicid
-			// qos, retain, topicId, msgId, data
-			m = message.NewPublishNormal(
-				1, false, topicId, msgId, msg.Payload())
+			// if not found
+			if !ok {
+				// TODO: implement
+				log.Println("[Info] Normal topic id was not found for ", topic, ".")
+
+				// TODO: implement wildcarded route
+				continue
+
+			} else {
+				// process as fixed topicid
+				// qos, retain, topicId, msgId, data
+				msgId := session.NextMsgId()
+				m = message.NewPublishNormal(
+					1, false, topicId, msgId, msg.Payload())
+			}
+
+		case message.MQTTSN_TIDT_PREDEFINED:
+			// get topicid
+			topicId, ok := session.LoadPredefTopicId(topic)
+
+			// if not found
+			if !ok {
+				// PREDEFINED TOPIC is must be fixed
+				log.Println("[Error] Predefined topic id was not found for ", topic, ".")
+				continue
+
+			} else {
+				// process as fixed topicid
+				// qos, retain, topicId, msgId, data
+				msgId := session.NextMsgId()
+				m = message.NewPublishPredefined(
+					1, false, topicId, msgId, msg.Payload())
+			}
+
+		case message.MQTTSN_TIDT_SHORT_NAME:
+
 		}
 
 		// send message
-		subscriber.Conn.WriteToUDP(m.Marshall(), subscriber.Remote)
+		session.Conn.WriteToUDP(m.Marshall(), session.Remote)
 	}
 }
