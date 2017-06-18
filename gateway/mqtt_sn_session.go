@@ -142,7 +142,7 @@ func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	} else {
 		// TODO: implement wildcarded or short topic route
 
-		log.Println("[Warn] topic id was not found for ", topic, ".")
+		log.Println("WARN : topic id was not found for ", topic, ".")
 		return
 	}
 

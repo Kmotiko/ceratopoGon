@@ -13,13 +13,13 @@ func LoadPredefinedTopics(file string) (PredefinedTopics, error) {
 
 	yamlStr, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Println("[Error] faild to read yaml file.")
+		log.Println("ERROR : faild to read yaml file.")
 		return nil, err
 	}
 
 	err = yaml.Unmarshal(yamlStr, &topics)
 	if err != nil {
-		log.Println("[Error] faild to unmarshall yaml file.")
+		log.Println("ERROR : faild to unmarshall yaml file.")
 		return nil, err
 	}
 	return topics, nil

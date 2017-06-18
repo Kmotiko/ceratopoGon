@@ -419,7 +419,7 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 			if token := g.mqttClient.Subscribe(
 				(m.TopicName), byte(qos), g.OnPublish); token.Wait() && token.Error() != nil {
 				// TODO: error handling
-				log.Println("failed to send Subscribe to broker : ", token.Error())
+				log.Println("ERROR : failed to send Subscribe to broker : ", token.Error())
 			}
 		}
 
@@ -447,7 +447,7 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 			if token := g.mqttClient.Subscribe(
 				(topicName), byte(qos), g.OnPublish); token.Wait() && token.Error() != nil {
 				// TODO: error handling
-				log.Println("failed to send Subscribe to broker : ", token.Error())
+				log.Println("ERROR : failed to send Subscribe to broker : ", token.Error())
 			}
 		}
 
@@ -582,7 +582,7 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 			// if not found
 			if !ok {
 				// TODO: implement
-				log.Println("[Info] Normal topic id was not found for ", topic, ".")
+				log.Println("INFO : Normal topic id was not found for ", topic, ".")
 
 				// TODO: implement wildcarded route
 				continue
@@ -602,7 +602,7 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 			// if not found
 			if !ok {
 				// PREDEFINED TOPIC is must be fixed
-				log.Println("[Error] Predefined topic id was not found for ", topic, ".")
+				log.Println("ERROR : Predefined topic id was not found for ", topic, ".")
 				continue
 
 			} else {

@@ -29,7 +29,7 @@ func (t *TopicMap) StoreTopicWithId(topicName string, id uint16) bool {
 
 	ok := t.topicId.EnsureId(id)
 	if !ok {
-		log.Println("[Error] failed to ensure topic id.")
+		log.Println("ERROR : failed to ensure topic id.")
 		return false
 	}
 

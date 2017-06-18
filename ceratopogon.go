@@ -57,7 +57,7 @@ func main() {
 	// start server
 	err = gateway.StartUp()
 	if err != nil {
-		log.Println(errors.New("failed to StartUp gateway"))
+		log.Println(errors.New("ERROR : failed to StartUp gateway"))
 	}
 	return
 }
