@@ -170,14 +170,15 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 				s.StorePredefTopicWithId(key, value)
 			}
 		}
-	}
 
-	// connect to mqtt broker
-	s.ConnectToBroker(
-		g.Config.BrokerHost,
-		g.Config.BrokerPort,
-		g.Config.BrokerUser,
-		g.Config.BrokerPassword)
+		// connect to mqtt broker
+		s.ConnectToBroker(
+			g.Config.BrokerHost,
+			g.Config.BrokerPort,
+			g.Config.BrokerUser,
+			g.Config.BrokerPassword)
+
+	}
 
 	// add session to map
 	g.MqttSnSessions[remote.String()] = s
