@@ -162,7 +162,14 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 		}
 
 		// create new session
-		s = NewTransportSnSession(m.ClientId, conn, remote)
+		s = NewTransportSnSession(
+			m.ClientId,
+			conn,
+			remote,
+			g.Config.BrokerHost,
+			g.Config.BrokerPort,
+			g.Config.BrokerUser,
+			g.Config.BrokerPassword)
 
 		// read predefined topics
 		if topics, ok := g.predefTopics[m.ClientId]; ok {
@@ -172,11 +179,7 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 		}
 
 		// connect to mqtt broker
-		s.ConnectToBroker(
-			g.Config.BrokerHost,
-			g.Config.BrokerPort,
-			g.Config.BrokerUser,
-			g.Config.BrokerPassword)
+		s.ConnectToBroker(true)
 
 	}
 

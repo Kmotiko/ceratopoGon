@@ -5,6 +5,7 @@ import (
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 )
@@ -25,9 +26,11 @@ type MqttSnSession struct {
 type TransportSnSession struct {
 	// mutex    sync.RWMutex
 	*MqttSnSession
-	mqttClient MQTT.Client
-	// brokerAddr string
-	// brokerPort int
+	mqttClient     MQTT.Client
+	brokerHost     string
+	brokerPort     int
+	brokerUser     string
+	brokerPassword string
 }
 
 func NewMqttSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *MqttSnSession {
@@ -81,7 +84,14 @@ func (s *MqttSnSession) NextMsgId() uint16 {
 	return s.msgId.NextId()
 }
 
-func NewTransportSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *TransportSnSession {
+func NewTransportSnSession(
+	id string,
+	conn *net.UDPConn,
+	remote *net.UDPAddr,
+	host string,
+	port int,
+	user string,
+	password string) *TransportSnSession {
 	s := &TransportSnSession{
 		&MqttSnSession{
 			sync.RWMutex{},
@@ -91,17 +101,31 @@ func NewTransportSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *T
 			NewTopicMap(),
 			NewTopicMap(),
 			&ManagedId{}},
-		nil}
+		nil, host, port, user, password}
 	return s
 }
 
-func (s *TransportSnSession) ConnectToBroker(brokerAddr string, brokerPort int, user string, password string) error {
+func (s *TransportSnSession) connLostHandler(
+	c MQTT.Client, err error) {
+	log.Println("ERROR : MQTT connection is lost with ", err)
+	err = s.ConnectToBroker(false)
+	if err != nil {
+		log.Println("ERROR : failed to connect to broker")
+		os.Exit(0)
+	}
+}
+
+func (s *TransportSnSession) ConnectToBroker(cleanSession bool) error {
 	// create opts
-	addr := "tcp://" + brokerAddr + ":" + strconv.Itoa(brokerPort)
+	addr := "tcp://" + s.brokerHost + ":" + strconv.Itoa(s.brokerPort)
 	opts := MQTT.NewClientOptions().AddBroker(addr)
 	opts.SetClientID(s.MqttSnSession.ClientId)
-	opts.SetUsername(user)
-	opts.SetPassword(password)
+	opts.SetUsername(s.brokerUser)
+	opts.SetPassword(s.brokerPassword)
+	opts.SetAutoReconnect(false)
+	opts.SetConnectionLostHandler(
+		s.connLostHandler)
+	opts.SetCleanSession(cleanSession)
 
 	// create client instance
 	s.mqttClient = (MQTT.NewClient(opts))

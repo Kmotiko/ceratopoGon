@@ -5,6 +5,7 @@ import (
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -18,13 +19,17 @@ func NewAggregatingGateway(config *GatewayConfig,
 	return g
 }
 
-func (g *AggregatingGateway) StartUp() error {
+func (g *AggregatingGateway) ConnectToBroker(cleanSession bool) error {
 	// create opts
 	addr := "tcp://" + g.Config.BrokerHost + ":" + strconv.Itoa(g.Config.BrokerPort)
 	opts := MQTT.NewClientOptions().AddBroker(addr)
 	opts.SetClientID("ceratopogon")
 	opts.SetUsername(g.Config.BrokerUser)
 	opts.SetPassword(g.Config.BrokerPassword)
+	opts.SetAutoReconnect(false)
+	opts.SetConnectionLostHandler(
+		g.connLostHandler)
+	opts.SetCleanSession(cleanSession)
 
 	// create client instance
 	// TODO: add lock
@@ -34,6 +39,26 @@ func (g *AggregatingGateway) StartUp() error {
 	if token := g.mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		log.Println(token.Error())
 		return token.Error()
+	}
+
+	return nil
+}
+
+func (g *AggregatingGateway) connLostHandler(
+	c MQTT.Client, err error) {
+	log.Println("ERROR : MQTT connection is lost with ", err)
+	err = g.ConnectToBroker(false)
+	if err != nil {
+		log.Println("ERROR : failed to connect to broker")
+		os.Exit(0)
+	}
+}
+
+func (g *AggregatingGateway) StartUp() error {
+	// connect to broker
+	err := g.ConnectToBroker(true)
+	if err != nil {
+		return err
 	}
 
 	// launch server loop
