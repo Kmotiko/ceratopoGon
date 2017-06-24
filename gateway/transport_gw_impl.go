@@ -4,15 +4,12 @@ import (
 	"github.com/Kmotiko/ceratopoGon/messages"
 	"log"
 	"net"
-	"strings"
-	"sync"
 )
 
 func NewTransportGateway(
 	config *GatewayConfig,
 	predefTopics PredefinedTopics) *TransportGateway {
 	g := &TransportGateway{
-		sync.RWMutex{},
 		make(map[string]*TransportSnSession),
 		config,
 		predefTopics}
@@ -34,77 +31,77 @@ func (g *TransportGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, 
 		switch mi.MsgType {
 		case message.MQTTSNT_WILLTOPICREQ:
 			// WillTopicReq
-			go g.handleWillTopicReq(conn, remote, mi)
+			g.handleWillTopicReq(conn, remote, mi)
 		case message.MQTTSNT_WILLMSGREQ:
 			// WillMsgReq
-			go g.handleWillMsgReq(conn, remote, mi)
+			g.handleWillMsgReq(conn, remote, mi)
 		case message.MQTTSNT_PINGREQ:
 			// PingResp
-			go g.handlePingResp(conn, remote, mi)
+			g.handlePingResp(conn, remote, mi)
 		}
 	case *message.Advertise:
-		go g.handleAdvertise(conn, remote, mi)
+		g.handleAdvertise(conn, remote, mi)
 	case *message.SearchGw:
-		go g.handleSearchGw(conn, remote, mi)
+		g.handleSearchGw(conn, remote, mi)
 	case *message.GwInfo:
-		go g.handleGwInfo(conn, remote, mi)
+		g.handleGwInfo(conn, remote, mi)
 	case *message.Connect:
-		go g.handleConnect(conn, remote, mi)
+		g.handleConnect(conn, remote, mi)
 	case *message.ConnAck:
-		go g.handleConnAck(conn, remote, mi)
+		g.handleConnAck(conn, remote, mi)
 	case *message.WillTopic:
-		go g.handleWillTopic(conn, remote, mi)
+		g.handleWillTopic(conn, remote, mi)
 	case *message.WillMsg:
-		go g.handleWillMsg(conn, remote, mi)
+		g.handleWillMsg(conn, remote, mi)
 	case *message.Register:
-		go g.handleRegister(conn, remote, mi)
+		g.handleRegister(conn, remote, mi)
 	case *message.RegAck:
-		go g.handleRegAck(conn, remote, mi)
+		g.handleRegAck(conn, remote, mi)
 	case *message.Publish:
-		go g.handlePublish(conn, remote, mi)
+		g.handlePublish(conn, remote, mi)
 	case *message.PubAck:
-		go g.handlePubAck(conn, remote, mi)
+		g.handlePubAck(conn, remote, mi)
 	case *message.PubRec:
 		switch mi.Header.MsgType {
 		case message.MQTTSNT_PUBREC:
-			go g.handlePubRec(conn, remote, mi)
+			g.handlePubRec(conn, remote, mi)
 		case message.MQTTSNT_PUBCOMP:
 			//PubComp:
-			go g.handlePubComp(conn, remote, mi)
+			g.handlePubComp(conn, remote, mi)
 		case message.MQTTSNT_PUBREL:
 			//PubRel:
-			go g.handlePubRel(conn, remote, mi)
+			g.handlePubRel(conn, remote, mi)
 		}
 	case *message.Subscribe:
 		switch mi.Header.MsgType {
 		case message.MQTTSNT_SUBSCRIBE:
 			// Subscribe
-			go g.handleSubscribe(conn, remote, mi)
+			g.handleSubscribe(conn, remote, mi)
 		case message.MQTTSNT_UNSUBSCRIBE:
 			// UnSubscribe
-			go g.handleUnSubscribe(conn, remote, mi)
+			g.handleUnSubscribe(conn, remote, mi)
 		}
 	case *message.SubAck:
-		go g.handleSubAck(conn, remote, mi)
+		g.handleSubAck(conn, remote, mi)
 	case *message.UnSubAck:
-		go g.handleUnSubAck(conn, remote, mi)
+		g.handleUnSubAck(conn, remote, mi)
 	case *message.PingReq:
-		go g.handlePingReq(conn, remote, mi)
+		g.handlePingReq(conn, remote, mi)
 	case *message.DisConnect:
-		go g.handleDisConnect(conn, remote, mi)
+		g.handleDisConnect(conn, remote, mi)
 	case *message.WillTopicUpd:
-		go g.handleWillTopicUpd(conn, remote, mi)
+		g.handleWillTopicUpd(conn, remote, mi)
 	case *message.WillTopicResp:
 		switch mi.Header.MsgType {
 		case message.MQTTSNT_WILLTOPICRESP:
 			// WillTopicResp
-			go g.handleWillTopicResp(conn, remote, mi)
+			g.handleWillTopicResp(conn, remote, mi)
 		case message.MQTTSNT_WILLMSGRESP:
 			// WillMsgResp
-			go g.handleWillMsgResp(conn, remote, mi)
+			g.handleWillMsgResp(conn, remote, mi)
 		}
 	case *message.WillMsgUpd:
-		go g.handleWillMsgUpd(conn, remote, mi)
+		g.handleWillMsgUpd(conn, remote, mi)
 	}
 }
 
@@ -134,9 +131,7 @@ func (g *TransportGateway) handleGwInfo(conn *net.UDPConn, remote *net.UDPAddr, 
 /*********************************************/
 func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.Connect) {
 	log.Println("handle Connect")
-	// lock
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
+	log.Println("Connected from ", m.ClientId, " : ", remote.String())
 
 	var s *TransportSnSession = nil
 
@@ -159,6 +154,7 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 		// create new mqtt-sn session instance
 		if s != nil {
 			delete(g.MqttSnSessions, s.Remote.String())
+			s.shutDown <- true
 		}
 
 		// create new session
@@ -181,6 +177,7 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 		// connect to mqtt broker
 		s.ConnectToBroker(true)
 
+		go s.sendMqttMessageLoop()
 	}
 
 	// add session to map
@@ -235,14 +232,11 @@ func (g *TransportGateway) handleRegister(conn *net.UDPConn, remote *net.UDPAddr
 	log.Println("handle Register")
 
 	// get mqttsn session
-	g.mutex.Lock()
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
 		log.Println("ERROR : MqttSn session not found for remote", remote.String())
-		g.mutex.Unlock()
 		return
 	}
-	g.mutex.Unlock()
 
 	// search topicid
 	topicId, ok := s.LoadTopicId(m.TopicName)
@@ -276,71 +270,13 @@ func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr,
 	log.Println("handle Publish")
 
 	// get mqttsn session
-	g.mutex.Lock()
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
 		log.Println("ERROR : MqttSn session not found for remote", remote.String())
-		g.mutex.Unlock()
 		return
 	}
-	g.mutex.Unlock()
+	s.sendBuffer <- m
 
-	var topicName string
-	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_NORMAL {
-		// search topic name from topic id
-		topicName, ok = s.LoadTopic(m.TopicId)
-		if ok == false {
-			// error handling
-			log.Println("ERROR : topic was not found.")
-			puback := message.NewPubAck(
-				m.TopicId,
-				m.MsgId,
-				message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID)
-			// send
-			conn.WriteToUDP(puback.Marshall(), remote)
-
-			return
-		}
-	} else if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
-		// search topic name from topic id
-		topicName, ok = s.LoadPredefTopic(m.TopicId)
-		if ok == false {
-			// error handling
-			log.Println("ERROR : topic was not found.")
-			puback := message.NewPubAck(
-				m.TopicId,
-				m.MsgId,
-				message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID)
-			// send
-			conn.WriteToUDP(puback.Marshall(), remote)
-
-			return
-		}
-	} else if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_SHORT_NAME {
-		topicName = m.TopicName
-	} else {
-		log.Println("ERROR : invalid TopicIdType ", message.TopicIdType(m.Flags))
-		return
-	}
-
-	// send publish to broker
-	mqtt := s.mqttClient
-
-	// get qos
-	qos := message.QosFlag(m.Flags)
-
-	// send Publish to Mqtt Broker.
-	// Topic, Qos, Retain, Payload
-	token := mqtt.Publish(topicName, qos, false, m.Data)
-
-	if qos == 1 {
-		// if qos 1
-		waitPubAck(token, s.MqttSnSession, m.TopicId, m.MsgId)
-	} else if qos == 2 {
-		// elif qos 2
-		// TODO: send PubRec
-		// TODO: wait PubComp
-	}
 }
 
 /*********************************************/
@@ -377,7 +313,6 @@ func (g *TransportGateway) handlePubComp(conn *net.UDPConn, remote *net.UDPAddr,
 func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
 	log.Println("handle Subscribe")
 
-	// TODO: add lock?
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
 	if ok == false {
@@ -385,58 +320,7 @@ func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAdd
 		return
 	}
 
-	// if topic include wildcard, set topicId as 0x0000
-	// else regist topic to client-session instance and assign topiId
-	var topicId uint16
-	topicId = uint16(0x0000)
-
-	// return code
-	var rc byte = message.MQTTSN_RC_ACCEPTED
-
-	switch message.TopicIdType(m.Flags) {
-	// if TopicIdType is NORMAL, regist it
-	case message.MQTTSN_TIDT_NORMAL:
-		// check topic is wildcarded or not
-		topics := strings.Split(m.TopicName, "/")
-		if IsWildCarded(topics) != true {
-			topicId = s.StoreTopic(m.TopicName)
-		}
-
-		// send subscribe to broker
-		mqtt := s.mqttClient
-		qos := message.QosFlag(m.Flags)
-		mqtt.Subscribe(m.TopicName, qos, s.OnPublish)
-
-	// else if PREDEFINED, get TopicName and Subscribe to Broker
-	case message.MQTTSN_TIDT_PREDEFINED:
-		// Get topicId
-		topicId = m.TopicId
-
-		// get topic name and subscribe to broker
-		topicName, ok := s.LoadPredefTopic(topicId)
-		if ok != true {
-			// TODO: error handling
-			rc = message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID
-		}
-
-		// send subscribe to broker
-		mqtt := s.mqttClient
-		qos := message.QosFlag(m.Flags)
-		mqtt.Subscribe(topicName, qos, s.OnPublish)
-
-	// else if SHORT_NAME, subscribe to broker
-	case message.MQTTSN_TIDT_SHORT_NAME:
-		// TODO: implement
-	}
-
-	// send subscribe to broker
-	suback := message.NewSubAck(
-		topicId,
-		m.MsgId,
-		rc)
-
-	// send suback
-	conn.WriteToUDP(suback.Marshall(), remote)
+	s.sendBuffer <- m
 }
 
 /*********************************************/
@@ -479,10 +363,6 @@ func (g *TransportGateway) handlePingResp(conn *net.UDPConn, remote *net.UDPAddr
 /*********************************************/
 func (g *TransportGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.DisConnect) {
 	log.Println("handle DisConnect")
-
-	// lock
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
 
 	// TODO: implement
 	if m.Duration > 0 {

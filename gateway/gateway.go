@@ -19,12 +19,12 @@ type AggregatingGateway struct {
 	Config         *GatewayConfig
 	mqttClient     MQTT.Client
 	predefTopics   PredefinedTopics
-	// sendBuffer     chan *message.MqttSnMessage
+	sendBuffer     chan message.MqttSnMessage
+	shutDonw       chan bool
 	// topics Topic
 }
 
 type TransportGateway struct {
-	mutex          sync.RWMutex
 	MqttSnSessions map[string]*TransportSnSession
 	Config         *GatewayConfig
 	predefTopics   PredefinedTopics
