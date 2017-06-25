@@ -1,6 +1,7 @@
 package ceratopoGon
 
 import (
+	"github.com/Kmotiko/ceratopoGon/env"
 	"github.com/Kmotiko/ceratopoGon/messages"
 	"log"
 	"net"
@@ -267,7 +268,10 @@ func (g *TransportGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr, 
 /* Publish                                   */
 /*********************************************/
 func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr, m *message.Publish) {
-	log.Println("handle Publish")
+	if env.DEBUG {
+		log.Println("handle Publish")
+		log.Println("Published from : ", remote.String(), ", TopicID : ", m.TopicId)
+	}
 
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
@@ -363,6 +367,7 @@ func (g *TransportGateway) handlePingResp(conn *net.UDPConn, remote *net.UDPAddr
 /*********************************************/
 func (g *TransportGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.DisConnect) {
 	log.Println("handle DisConnect")
+	log.Println("DisConnect : ", remote.String())
 
 	// TODO: implement
 	if m.Duration > 0 {

@@ -1,6 +1,7 @@
 package ceratopoGon
 
 import (
+	"github.com/Kmotiko/ceratopoGon/env"
 	"github.com/Kmotiko/ceratopoGon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"log"
@@ -20,6 +21,8 @@ func NewAggregatingGateway(config *GatewayConfig,
 }
 
 func (g *AggregatingGateway) ConnectToBroker(cleanSession bool) error {
+	log.Println("Connect to broker")
+
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
@@ -181,6 +184,7 @@ func (g *AggregatingGateway) handleGwInfo(conn *net.UDPConn, remote *net.UDPAddr
 /*********************************************/
 func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.Connect) {
 	log.Println("handle Connect")
+	log.Println("Connected from ", m.ClientId, " : ", remote.String())
 
 	var s *MqttSnSession = nil
 
@@ -305,7 +309,10 @@ func (g *AggregatingGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr
 /* Publish                                   */
 /*********************************************/
 func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr, m *message.Publish) {
-	log.Println("handle Publish")
+	if env.DEBUG {
+		log.Println("handle Publish")
+		log.Println("Published from : ", remote.String(), ", TopicID : ", m.TopicId)
+	}
 
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]
@@ -421,6 +428,8 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 	switch message.TopicIdType(m.Flags) {
 	// if TopicIdType is NORMAL, regist it
 	case message.MQTTSN_TIDT_NORMAL:
+		log.Println("Subscribe from : ", remote.String(), ", TopicID Type : NORMAL, TopicName : ", m.TopicName)
+
 		// check topic is wildcarded or not
 		topics := strings.Split(m.TopicName, "/")
 		if IsWildCarded(topics) != true {
@@ -443,6 +452,8 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 
 	// else if PREDEFINED, get TopicName and Subscribe to Broker
 	case message.MQTTSN_TIDT_PREDEFINED:
+		log.Println("Subscribe from : ", remote.String(), ", TopicID Type : PREDEFINED, TopicID : ", m.TopicId)
+
 		// get topic name and subscribe to broker
 		topicName, ok := s.Topics.LoadTopic(m.TopicId)
 		if ok != true {
@@ -471,6 +482,7 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 
 	// else if SHORT_NAME, subscribe to broker
 	case message.MQTTSN_TIDT_SHORT_NAME:
+		log.Println("WARN : Subscribe SHORT Topic is not implemented")
 		// TODO: implement
 
 		// append to TopicNodes
@@ -526,6 +538,7 @@ func (g *AggregatingGateway) handlePingResp(conn *net.UDPConn, remote *net.UDPAd
 /*********************************************/
 func (g *AggregatingGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.DisConnect) {
 	log.Println("handle DisConnect")
+	log.Println("DisConnect : ", remote.String())
 
 	// TODO: implement
 	if m.Duration > 0 {
@@ -573,7 +586,10 @@ func (g *AggregatingGateway) handleWillMsgResp(conn *net.UDPConn, remote *net.UD
 /*********************************************/
 // handle message from broker
 func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
-	log.Println("on publish. Receive message from broker.")
+	if env.DEBUG {
+		log.Println("on publish. Receive message from broker.")
+	}
+
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 

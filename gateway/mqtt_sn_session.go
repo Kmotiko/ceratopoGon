@@ -1,6 +1,7 @@
 package ceratopoGon
 
 import (
+	"github.com/Kmotiko/ceratopoGon/env"
 	"github.com/Kmotiko/ceratopoGon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"log"
@@ -176,6 +177,8 @@ func (s *TransportSnSession) connLostHandler(
  *
  */
 func (s *TransportSnSession) ConnectToBroker(cleanSession bool) error {
+	log.Println("Connect to broker")
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -205,7 +208,10 @@ func (s *TransportSnSession) ConnectToBroker(cleanSession bool) error {
  *
  */
 func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
-	log.Println("on publish. Receive message from broker.")
+	if env.DEBUG {
+		log.Println("on publish. Receive message from broker.")
+	}
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -268,6 +274,10 @@ func (s *TransportSnSession) sendMqttMessageLoop() {
  *
  */
 func (s *TransportSnSession) doPublish(m *message.Publish) {
+	if env.DEBUG {
+		log.Println("Publish to broker")
+	}
+
 	var topicName string
 	var ok bool
 	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_NORMAL {
@@ -339,6 +349,8 @@ func (s *TransportSnSession) doSubscribe(m *message.Subscribe) {
 	switch message.TopicIdType(m.Flags) {
 	// if TopicIdType is NORMAL, regist it
 	case message.MQTTSN_TIDT_NORMAL:
+		log.Println("Subscribe from : ", s.Remote.String(), ", TopicID Type : NORMAL, TopicName : ", m.TopicName)
+
 		// check topic is wildcarded or not
 		topics := strings.Split(m.TopicName, "/")
 		if IsWildCarded(topics) != true {
@@ -352,6 +364,8 @@ func (s *TransportSnSession) doSubscribe(m *message.Subscribe) {
 
 	// else if PREDEFINED, get TopicName and Subscribe to Broker
 	case message.MQTTSN_TIDT_PREDEFINED:
+		log.Println("Subscribe from : ", s.Remote.String(), ", TopicID Type : PREDEFINED, TopicID : ", m.TopicId)
+
 		// Get topicId
 		topicId = m.TopicId
 
@@ -369,6 +383,7 @@ func (s *TransportSnSession) doSubscribe(m *message.Subscribe) {
 
 	// else if SHORT_NAME, subscribe to broker
 	case message.MQTTSN_TIDT_SHORT_NAME:
+		log.Println("WARN : Subscribe SHORT Topic is not implemented")
 		// TODO: implement
 	}
 
