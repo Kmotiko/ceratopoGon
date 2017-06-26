@@ -156,7 +156,9 @@ func (m *MqttSnHeader) Marshall() []byte {
 	if m.Size() == 2 {
 		packet[index] = (uint8)(m.Length)
 		index += 1
-	} else if m.Size() == 3 {
+	} else if m.Size() == 4 {
+		packet[index] = 0x01
+		index++
 		binary.BigEndian.PutUint16(packet[index:], m.Length)
 		index += 2
 	}
@@ -169,6 +171,7 @@ func (m *MqttSnHeader) UnMarshall(packet []byte) {
 	index := 0
 	length := packet[index]
 	if length == 0x01 {
+		index++
 		m.Length = binary.BigEndian.Uint16(packet[index:])
 		index += 2
 	} else {
@@ -179,7 +182,7 @@ func (m *MqttSnHeader) UnMarshall(packet []byte) {
 }
 
 func (m *MqttSnHeader) Size() int {
-	size := 3
+	size := 4
 	// if length is smaller than 256
 	if m.Length < 256 {
 		size = 2
