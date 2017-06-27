@@ -5,6 +5,9 @@ import (
 	"flag"
 	"github.com/Kmotiko/ceratopoGon/gateway"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func initialize() (ceratopoGon.Gateway, error) {
@@ -35,12 +38,16 @@ func initialize() (ceratopoGon.Gateway, error) {
 		return nil, err
 	}
 
+	// create signal chan
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGKILL)
+
 	// create Gateway
 	var gateway ceratopoGon.Gateway
 	if config.IsAggregate {
-		gateway = ceratopoGon.NewAggregatingGateway(config, topics)
+		gateway = ceratopoGon.NewAggregatingGateway(config, topics, signalChan)
 	} else {
-		gateway = ceratopoGon.NewTransparentGateway(config, topics)
+		gateway = ceratopoGon.NewTransparentGateway(config, topics, signalChan)
 	}
 
 	return gateway, nil

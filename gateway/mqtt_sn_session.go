@@ -263,9 +263,9 @@ func (s *TransparentSnSession) sendMqttMessageLoop() {
 				s.doSubscribe(msgi)
 			}
 		case <-s.shutDown:
+			// wait 100 ms and disconnect
+			s.mqttClient.Disconnect(100)
 			return
-		default:
-			continue
 		}
 	}
 }

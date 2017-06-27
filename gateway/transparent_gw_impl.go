@@ -5,21 +5,35 @@ import (
 	"github.com/Kmotiko/ceratopoGon/messages"
 	"log"
 	"net"
+	"os"
 )
 
 func NewTransparentGateway(
 	config *GatewayConfig,
-	predefTopics PredefinedTopics) *TransparentGateway {
+	predefTopics PredefinedTopics,
+	signalChan chan os.Signal) *TransparentGateway {
 	g := &TransparentGateway{
 		make(map[string]*TransparentSnSession),
 		config,
-		predefTopics}
+		predefTopics,
+		signalChan}
 	return g
 }
 
 func (g *TransparentGateway) StartUp() error {
 	// launch server loop
-	return serverLoop(g, g.Config.Host, g.Config.Port)
+	go serverLoop(g, g.Config.Host, g.Config.Port)
+	g.waitSignal()
+	return nil
+}
+
+func (g *TransparentGateway) waitSignal() {
+	<-g.signalChan
+	for _, s := range g.MqttSnSessions {
+		s.mqttClient.Disconnect(0)
+	}
+	log.Println("Shutdown TransparentGateway...")
+	return
 }
 
 func (g *TransparentGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, packet []byte) {

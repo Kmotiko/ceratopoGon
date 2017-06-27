@@ -12,11 +12,13 @@ import (
 )
 
 func NewAggregatingGateway(config *GatewayConfig,
-	predefTopics PredefinedTopics) *AggregatingGateway {
+	predefTopics PredefinedTopics,
+	signalChan chan os.Signal) *AggregatingGateway {
 	g := &AggregatingGateway{
 		MqttSnSessions: make(map[string]*MqttSnSession),
 		Config:         config,
-		predefTopics:   predefTopics}
+		predefTopics:   predefTopics,
+		signalChan:     signalChan}
 	return g
 }
 
@@ -71,7 +73,16 @@ func (g *AggregatingGateway) StartUp() error {
 	}
 
 	// launch server loop
-	return serverLoop(g, g.Config.Host, g.Config.Port)
+	go serverLoop(g, g.Config.Host, g.Config.Port)
+	g.waitSignal()
+	return nil
+}
+
+func (g *AggregatingGateway) waitSignal() {
+	<-g.signalChan
+	g.mqttClient.Disconnect(100)
+	log.Println("Shutdown AggregatingGateway...")
+	return
 }
 
 func (g *AggregatingGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, packet []byte) {

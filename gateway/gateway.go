@@ -4,6 +4,7 @@ import (
 	"github.com/Kmotiko/ceratopoGon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 )
@@ -20,7 +21,8 @@ type AggregatingGateway struct {
 	mqttClient     MQTT.Client
 	predefTopics   PredefinedTopics
 	sendBuffer     chan message.MqttSnMessage
-	shutDonw       chan bool
+	shutDown       chan bool
+	signalChan     chan os.Signal
 	// topics Topic
 }
 
@@ -28,6 +30,7 @@ type TransparentGateway struct {
 	MqttSnSessions map[string]*TransparentSnSession
 	Config         *GatewayConfig
 	predefTopics   PredefinedTopics
+	signalChan     chan os.Signal
 }
 
 func serverLoop(gateway Gateway, host string, port int) error {
