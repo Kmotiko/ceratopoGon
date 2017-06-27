@@ -139,7 +139,8 @@ func NewTransparentSnSession(
 	host string,
 	port int,
 	user string,
-	password string) *TransparentSnSession {
+	password string,
+	queueSize int) *TransparentSnSession {
 	s := &TransparentSnSession{
 		sync.RWMutex{},
 		&MqttSnSession{
@@ -151,7 +152,7 @@ func NewTransparentSnSession(
 			NewTopicMap(),
 			&ManagedId{}},
 		nil, host, port, user, password,
-		make(chan message.MqttSnMessage, 10),
+		make(chan message.MqttSnMessage, queueSize),
 		make(chan bool, 1)}
 	return s
 }

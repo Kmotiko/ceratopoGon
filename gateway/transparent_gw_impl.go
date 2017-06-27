@@ -180,7 +180,8 @@ func (g *TransparentGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 			g.Config.BrokerHost,
 			g.Config.BrokerPort,
 			g.Config.BrokerUser,
-			g.Config.BrokerPassword)
+			g.Config.BrokerPassword,
+			g.Config.MessageQueueSize)
 
 		// read predefined topics
 		if topics, ok := g.predefTopics[m.ClientId]; ok {
@@ -293,7 +294,12 @@ func (g *TransparentGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 		log.Println("ERROR : MqttSn session not found for remote", remote.String())
 		return
 	}
-	s.sendBuffer <- m
+
+	select {
+	case s.sendBuffer <- m:
+	default:
+		log.Println("ERROR : Failed to push MqttSnMessage, MessageBuffer is full.")
+	}
 
 }
 
@@ -338,7 +344,11 @@ func (g *TransparentGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 		return
 	}
 
-	s.sendBuffer <- m
+	select {
+	case s.sendBuffer <- m:
+	default:
+		log.Println("ERROR : Failed to push MqttSnMessage, MessageBuffer is full.")
+	}
 }
 
 /*********************************************/

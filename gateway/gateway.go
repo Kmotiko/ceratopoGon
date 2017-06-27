@@ -21,7 +21,6 @@ type AggregatingGateway struct {
 	mqttClient     MQTT.Client
 	predefTopics   PredefinedTopics
 	sendBuffer     chan message.MqttSnMessage
-	shutDown       chan bool
 	signalChan     chan os.Signal
 	// topics Topic
 }
