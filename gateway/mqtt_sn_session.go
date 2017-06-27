@@ -31,7 +31,7 @@ type MqttSnSession struct {
 /**
  *
  */
-type TransportSnSession struct {
+type TransparentSnSession struct {
 	mutex sync.RWMutex
 	*MqttSnSession
 	mqttClient     MQTT.Client
@@ -132,15 +132,15 @@ func (s *MqttSnSession) NextMsgId() uint16 {
 /**
  *
  */
-func NewTransportSnSession(
+func NewTransparentSnSession(
 	id string,
 	conn *net.UDPConn,
 	remote *net.UDPAddr,
 	host string,
 	port int,
 	user string,
-	password string) *TransportSnSession {
-	s := &TransportSnSession{
+	password string) *TransparentSnSession {
+	s := &TransparentSnSession{
 		sync.RWMutex{},
 		&MqttSnSession{
 			sync.RWMutex{},
@@ -159,7 +159,7 @@ func NewTransportSnSession(
 /**
  *
  */
-func (s *TransportSnSession) connLostHandler(
+func (s *TransparentSnSession) connLostHandler(
 	c MQTT.Client, err error) {
 	log.Println("ERROR : MQTT connection is lost with ", err)
 
@@ -176,7 +176,7 @@ func (s *TransportSnSession) connLostHandler(
 /**
  *
  */
-func (s *TransportSnSession) ConnectToBroker(cleanSession bool) error {
+func (s *TransparentSnSession) ConnectToBroker(cleanSession bool) error {
 	log.Println("Connect to broker")
 
 	s.mutex.Lock()
@@ -207,7 +207,7 @@ func (s *TransportSnSession) ConnectToBroker(cleanSession bool) error {
 /**
  *
  */
-func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
+func (s *TransparentSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	if env.DEBUG {
 		log.Println("on publish. Receive message from broker.")
 	}
@@ -218,7 +218,7 @@ func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	// get topic
 	topic := msg.Topic()
 
-	// TODO: check TransportSnSession's state.
+	// TODO: check TransparentSnSession's state.
 	// if session is sleep, gateway must buffer the message.
 
 	var m *message.Publish
@@ -252,7 +252,7 @@ func (s *TransportSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
 /**
  *
  */
-func (s *TransportSnSession) sendMqttMessageLoop() {
+func (s *TransparentSnSession) sendMqttMessageLoop() {
 	for {
 		select {
 		case msg := <-s.sendBuffer:
@@ -273,7 +273,7 @@ func (s *TransportSnSession) sendMqttMessageLoop() {
 /**
  *
  */
-func (s *TransportSnSession) doPublish(m *message.Publish) {
+func (s *TransparentSnSession) doPublish(m *message.Publish) {
 	if env.DEBUG {
 		log.Println("Publish to broker")
 	}
@@ -337,7 +337,7 @@ func (s *TransportSnSession) doPublish(m *message.Publish) {
 /**
  *
  */
-func (s *TransportSnSession) doSubscribe(m *message.Subscribe) {
+func (s *TransparentSnSession) doSubscribe(m *message.Subscribe) {
 	// if topic include wildcard, set topicId as 0x0000
 	// else regist topic to client-session instance and assign topiId
 	var topicId uint16

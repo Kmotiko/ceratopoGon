@@ -7,22 +7,22 @@ import (
 	"net"
 )
 
-func NewTransportGateway(
+func NewTransparentGateway(
 	config *GatewayConfig,
-	predefTopics PredefinedTopics) *TransportGateway {
-	g := &TransportGateway{
-		make(map[string]*TransportSnSession),
+	predefTopics PredefinedTopics) *TransparentGateway {
+	g := &TransparentGateway{
+		make(map[string]*TransparentSnSession),
 		config,
 		predefTopics}
 	return g
 }
 
-func (g *TransportGateway) StartUp() error {
+func (g *TransparentGateway) StartUp() error {
 	// launch server loop
 	return serverLoop(g, g.Config.Host, g.Config.Port)
 }
 
-func (g *TransportGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, packet []byte) {
+func (g *TransparentGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, packet []byte) {
 	// parse message
 	m := message.UnMarshall(packet)
 
@@ -109,32 +109,32 @@ func (g *TransportGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, 
 /*********************************************/
 /* Advertise                                 */
 /*********************************************/
-func (g *TransportGateway) handleAdvertise(conn *net.UDPConn, remote *net.UDPAddr, m *message.Advertise) {
+func (g *TransparentGateway) handleAdvertise(conn *net.UDPConn, remote *net.UDPAddr, m *message.Advertise) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* SearchGw                                  */
 /*********************************************/
-func (g *TransportGateway) handleSearchGw(conn *net.UDPConn, remote *net.UDPAddr, m *message.SearchGw) {
+func (g *TransparentGateway) handleSearchGw(conn *net.UDPConn, remote *net.UDPAddr, m *message.SearchGw) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* GwInfo                                    */
 /*********************************************/
-func (g *TransportGateway) handleGwInfo(conn *net.UDPConn, remote *net.UDPAddr, m *message.GwInfo) {
+func (g *TransparentGateway) handleGwInfo(conn *net.UDPConn, remote *net.UDPAddr, m *message.GwInfo) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* Connect                                   */
 /*********************************************/
-func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.Connect) {
+func (g *TransparentGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.Connect) {
 	log.Println("handle Connect")
 	log.Println("Connected from ", m.ClientId, " : ", remote.String())
 
-	var s *TransportSnSession = nil
+	var s *TransparentSnSession = nil
 
 	// check connected client is already registerd or not
 	// and cleansession is required or not
@@ -159,7 +159,7 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 		}
 
 		// create new session
-		s = NewTransportSnSession(
+		s = NewTransparentSnSession(
 			m.ClientId,
 			conn,
 			remote,
@@ -194,42 +194,42 @@ func (g *TransportGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAddr,
 /*********************************************/
 /* ConnAck                                   */
 /*********************************************/
-func (g *TransportGateway) handleConnAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.ConnAck) {
+func (g *TransparentGateway) handleConnAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.ConnAck) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* WillTopicReq                              */
 /*********************************************/
-func (g *TransportGateway) handleWillTopicReq(conn *net.UDPConn, remote *net.UDPAddr, m *message.MqttSnHeader) {
+func (g *TransparentGateway) handleWillTopicReq(conn *net.UDPConn, remote *net.UDPAddr, m *message.MqttSnHeader) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* WillTopic                                 */
 /*********************************************/
-func (g *TransportGateway) handleWillTopic(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopic) {
+func (g *TransparentGateway) handleWillTopic(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopic) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* WillMsgReq                                */
 /*********************************************/
-func (g *TransportGateway) handleWillMsgReq(conn *net.UDPConn, remote *net.UDPAddr, m *message.MqttSnHeader) {
+func (g *TransparentGateway) handleWillMsgReq(conn *net.UDPConn, remote *net.UDPAddr, m *message.MqttSnHeader) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* WillMsg                                   */
 /*********************************************/
-func (g *TransportGateway) handleWillMsg(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillMsg) {
+func (g *TransparentGateway) handleWillMsg(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillMsg) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* Register                                  */
 /*********************************************/
-func (g *TransportGateway) handleRegister(conn *net.UDPConn, remote *net.UDPAddr, m *message.Register) {
+func (g *TransparentGateway) handleRegister(conn *net.UDPConn, remote *net.UDPAddr, m *message.Register) {
 	log.Println("handle Register")
 
 	// get mqttsn session
@@ -257,7 +257,7 @@ func (g *TransportGateway) handleRegister(conn *net.UDPConn, remote *net.UDPAddr
 /*********************************************/
 /* RegAck                                    */
 /*********************************************/
-func (g *TransportGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.RegAck) {
+func (g *TransparentGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.RegAck) {
 	log.Println("handle RegAck")
 	if m.ReturnCode != message.MQTTSN_RC_ACCEPTED {
 		log.Println("ERROR : RegAck not accepted. Reqson = ", m.ReturnCode)
@@ -267,7 +267,7 @@ func (g *TransportGateway) handleRegAck(conn *net.UDPConn, remote *net.UDPAddr, 
 /*********************************************/
 /* Publish                                   */
 /*********************************************/
-func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr, m *message.Publish) {
+func (g *TransparentGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr, m *message.Publish) {
 	if env.DEBUG {
 		log.Println("handle Publish")
 		log.Println("Published from : ", remote.String(), ", TopicID : ", m.TopicId)
@@ -286,35 +286,35 @@ func (g *TransportGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAddr,
 /*********************************************/
 /* PubAck                                    */
 /*********************************************/
-func (g *TransportGateway) handlePubAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.PubAck) {
+func (g *TransparentGateway) handlePubAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.PubAck) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* PubRec                                    */
 /*********************************************/
-func (g *TransportGateway) handlePubRec(conn *net.UDPConn, remote *net.UDPAddr, m *message.PubRec) {
+func (g *TransparentGateway) handlePubRec(conn *net.UDPConn, remote *net.UDPAddr, m *message.PubRec) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* PubRel                                    */
 /*********************************************/
-func (g *TransportGateway) handlePubRel(conn *net.UDPConn, remote *net.UDPAddr, m *message.PubRec) {
+func (g *TransparentGateway) handlePubRel(conn *net.UDPConn, remote *net.UDPAddr, m *message.PubRec) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* PubComp                                   */
 /*********************************************/
-func (g *TransportGateway) handlePubComp(conn *net.UDPConn, remote *net.UDPAddr, m *message.PubRec) {
+func (g *TransparentGateway) handlePubComp(conn *net.UDPConn, remote *net.UDPAddr, m *message.PubRec) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* Subscribe                                 */
 /*********************************************/
-func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
+func (g *TransparentGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
 	log.Println("handle Subscribe")
 
 	// get mqttsn session
@@ -330,42 +330,42 @@ func (g *TransportGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPAdd
 /*********************************************/
 /* SubAck                                 */
 /*********************************************/
-func (g *TransportGateway) handleSubAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.SubAck) {
+func (g *TransparentGateway) handleSubAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.SubAck) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* UnSubscribe                               */
 /*********************************************/
-func (g *TransportGateway) handleUnSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
+func (g *TransparentGateway) handleUnSubscribe(conn *net.UDPConn, remote *net.UDPAddr, m *message.Subscribe) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* UnSubAck                                  */
 /*********************************************/
-func (g *TransportGateway) handleUnSubAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.UnSubAck) {
+func (g *TransparentGateway) handleUnSubAck(conn *net.UDPConn, remote *net.UDPAddr, m *message.UnSubAck) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* PingReq                                  */
 /*********************************************/
-func (g *TransportGateway) handlePingReq(conn *net.UDPConn, remote *net.UDPAddr, m *message.PingReq) {
+func (g *TransparentGateway) handlePingReq(conn *net.UDPConn, remote *net.UDPAddr, m *message.PingReq) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* PingResp                                  */
 /*********************************************/
-func (g *TransportGateway) handlePingResp(conn *net.UDPConn, remote *net.UDPAddr, m *message.MqttSnHeader) {
+func (g *TransparentGateway) handlePingResp(conn *net.UDPConn, remote *net.UDPAddr, m *message.MqttSnHeader) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* DisConnect                                */
 /*********************************************/
-func (g *TransportGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.DisConnect) {
+func (g *TransparentGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDPAddr, m *message.DisConnect) {
 	log.Println("handle DisConnect")
 	log.Println("DisConnect : ", remote.String())
 
@@ -387,27 +387,27 @@ func (g *TransportGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDPAd
 /*********************************************/
 /* WillTopicUpd                              */
 /*********************************************/
-func (g *TransportGateway) handleWillTopicUpd(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopicUpd) {
+func (g *TransparentGateway) handleWillTopicUpd(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopicUpd) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* WillMsgUpd                                */
 /*********************************************/
-func (g *TransportGateway) handleWillMsgUpd(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillMsgUpd) {
+func (g *TransparentGateway) handleWillMsgUpd(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillMsgUpd) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* WillTopicResp                             */
 /*********************************************/
-func (g *TransportGateway) handleWillTopicResp(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopicResp) {
+func (g *TransparentGateway) handleWillTopicResp(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopicResp) {
 	// TODO: implement
 }
 
 /*********************************************/
 /* WillMsgResp                             */
 /*********************************************/
-func (g *TransportGateway) handleWillMsgResp(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopicResp) {
+func (g *TransparentGateway) handleWillMsgResp(conn *net.UDPConn, remote *net.UDPAddr, m *message.WillTopicResp) {
 	// TODO: implement
 }

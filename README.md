@@ -92,7 +92,7 @@ test-client2:
 
 
 # Support Status
-## Transport Gateway
+## Transparent Gateway
 ### Message
 
  - [ ] ADVERTISE

@@ -40,7 +40,7 @@ func initialize() (ceratopoGon.Gateway, error) {
 	if config.IsAggregate {
 		gateway = ceratopoGon.NewAggregatingGateway(config, topics)
 	} else {
-		gateway = ceratopoGon.NewTransportGateway(config, topics)
+		gateway = ceratopoGon.NewTransparentGateway(config, topics)
 	}
 
 	return gateway, nil

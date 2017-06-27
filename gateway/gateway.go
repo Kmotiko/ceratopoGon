@@ -24,8 +24,8 @@ type AggregatingGateway struct {
 	// topics Topic
 }
 
-type TransportGateway struct {
-	MqttSnSessions map[string]*TransportSnSession
+type TransparentGateway struct {
+	MqttSnSessions map[string]*TransparentSnSession
 	Config         *GatewayConfig
 	predefTopics   PredefinedTopics
 }
