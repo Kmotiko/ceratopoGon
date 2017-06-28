@@ -265,7 +265,9 @@ func (s *TransparentSnSession) sendMqttMessageLoop() {
 			}
 		case <-s.shutDown:
 			// wait 100 ms and disconnect
-			s.mqttClient.Disconnect(100)
+			if s.mqttClient.IsConnected() {
+				s.mqttClient.Disconnect(100)
+			}
 			return
 		}
 	}

@@ -20,7 +20,6 @@ type AggregatingGateway struct {
 	Config         *GatewayConfig
 	mqttClient     MQTT.Client
 	predefTopics   PredefinedTopics
-	sendBuffer     chan message.MqttSnMessage
 	signalChan     chan os.Signal
 	// topics Topic
 }

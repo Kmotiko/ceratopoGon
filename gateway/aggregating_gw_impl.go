@@ -80,7 +80,9 @@ func (g *AggregatingGateway) StartUp() error {
 
 func (g *AggregatingGateway) waitSignal() {
 	<-g.signalChan
-	g.mqttClient.Disconnect(100)
+	if g.mqttClient.IsConnected() {
+		g.mqttClient.Disconnect(100)
+	}
 	log.Println("Shutdown AggregatingGateway...")
 	return
 }

@@ -191,7 +191,15 @@ func (g *TransparentGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 		}
 
 		// connect to mqtt broker
-		s.ConnectToBroker(true)
+		err := s.ConnectToBroker(true)
+		if err != nil {
+			// send conn ack
+			ack := message.NewConnAck()
+			ack.ReturnCode = message.MQTTSN_RC_REJECTED_CONGESTION
+			packet := ack.Marshall()
+			conn.WriteToUDP(packet, remote)
+			return
+		}
 
 		go s.sendMqttMessageLoop()
 	}
