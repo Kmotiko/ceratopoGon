@@ -16,13 +16,15 @@ func NewTransparentGateway(
 		make(map[string]*TransparentSnSession),
 		config,
 		predefTopics,
-		signalChan}
+		signalChan,
+		NewStatisticsReporter(1)}
 	return g
 }
 
 func (g *TransparentGateway) StartUp() error {
 	// launch server loop
 	go serverLoop(g, g.Config.Host, g.Config.Port)
+	go g.statisticsReporter.loggingLoop()
 	g.waitSignal()
 	return nil
 }
@@ -181,7 +183,8 @@ func (g *TransparentGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 			g.Config.BrokerPort,
 			g.Config.BrokerUser,
 			g.Config.BrokerPassword,
-			g.Config.MessageQueueSize)
+			g.Config.MessageQueueSize,
+			g.statisticsReporter)
 
 		// read predefined topics
 		if topics, ok := g.predefTopics[m.ClientId]; ok {
@@ -206,6 +209,7 @@ func (g *TransparentGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 
 	// add session to map
 	g.MqttSnSessions[remote.String()] = s
+	g.statisticsReporter.storeSessionCount(uint64(len(g.MqttSnSessions)))
 
 	// send conn ack
 	ack := message.NewConnAck()
@@ -295,6 +299,7 @@ func (g *TransparentGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 		log.Println("handle Publish")
 		log.Println("Published from : ", remote.String(), ", TopicID : ", m.TopicId)
 	}
+	g.statisticsReporter.countUpRecvPublish()
 
 	// get mqttsn session
 	s, ok := g.MqttSnSessions[remote.String()]

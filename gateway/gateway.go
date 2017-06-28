@@ -15,20 +15,22 @@ type Gateway interface {
 }
 
 type AggregatingGateway struct {
-	mutex          sync.RWMutex
-	MqttSnSessions map[string]*MqttSnSession
-	Config         *GatewayConfig
-	mqttClient     MQTT.Client
-	predefTopics   PredefinedTopics
-	signalChan     chan os.Signal
+	mutex              sync.RWMutex
+	MqttSnSessions     map[string]*MqttSnSession
+	Config             *GatewayConfig
+	mqttClient         MQTT.Client
+	predefTopics       PredefinedTopics
+	signalChan         chan os.Signal
+	statisticsReporter *StatisticsReporter
 	// topics Topic
 }
 
 type TransparentGateway struct {
-	MqttSnSessions map[string]*TransparentSnSession
-	Config         *GatewayConfig
-	predefTopics   PredefinedTopics
-	signalChan     chan os.Signal
+	MqttSnSessions     map[string]*TransparentSnSession
+	Config             *GatewayConfig
+	predefTopics       PredefinedTopics
+	signalChan         chan os.Signal
+	statisticsReporter *StatisticsReporter
 }
 
 func serverLoop(gateway Gateway, host string, port int) error {

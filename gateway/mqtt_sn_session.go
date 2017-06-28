@@ -34,13 +34,14 @@ type MqttSnSession struct {
 type TransparentSnSession struct {
 	mutex sync.RWMutex
 	*MqttSnSession
-	mqttClient     MQTT.Client
-	brokerHost     string
-	brokerPort     int
-	brokerUser     string
-	brokerPassword string
-	sendBuffer     chan message.MqttSnMessage
-	shutDown       chan bool
+	mqttClient         MQTT.Client
+	brokerHost         string
+	brokerPort         int
+	brokerUser         string
+	brokerPassword     string
+	sendBuffer         chan message.MqttSnMessage
+	shutDown           chan bool
+	statisticsReporter *StatisticsReporter
 }
 
 /**
@@ -140,7 +141,8 @@ func NewTransparentSnSession(
 	port int,
 	user string,
 	password string,
-	queueSize int) *TransparentSnSession {
+	queueSize int,
+	statisticsReporter *StatisticsReporter) *TransparentSnSession {
 	s := &TransparentSnSession{
 		sync.RWMutex{},
 		&MqttSnSession{
@@ -153,7 +155,8 @@ func NewTransparentSnSession(
 			&ManagedId{}},
 		nil, host, port, user, password,
 		make(chan message.MqttSnMessage, queueSize),
-		make(chan bool, 1)}
+		make(chan bool, 1),
+		statisticsReporter}
 	return s
 }
 
@@ -330,6 +333,7 @@ func (s *TransparentSnSession) doPublish(m *message.Publish) {
 	if qos == 1 {
 		// if qos 1
 		go waitPubAck(token, s.MqttSnSession, m.TopicId, m.MsgId)
+		s.statisticsReporter.countUpSendPublish()
 	} else if qos == 2 {
 		// elif qos 2
 		// TODO: send PubRec
