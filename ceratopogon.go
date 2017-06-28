@@ -24,9 +24,8 @@ func initialize() (ceratopoGon.Gateway, error) {
 	}
 
 	// parse topic file
-	var topics ceratopoGon.PredefinedTopics
 	if topicFile != "" {
-		topics, err = ceratopoGon.LoadPredefinedTopics(topicFile)
+		err = ceratopoGon.InitPredefinedTopic(topicFile)
 		if err != nil {
 			return nil, err
 		}
@@ -45,9 +44,9 @@ func initialize() (ceratopoGon.Gateway, error) {
 	// create Gateway
 	var gateway ceratopoGon.Gateway
 	if config.IsAggregate {
-		gateway = ceratopoGon.NewAggregatingGateway(config, topics, signalChan)
+		gateway = ceratopoGon.NewAggregatingGateway(config, signalChan)
 	} else {
-		gateway = ceratopoGon.NewTransparentGateway(config, topics, signalChan)
+		gateway = ceratopoGon.NewTransparentGateway(config, signalChan)
 	}
 
 	return gateway, nil
