@@ -49,7 +49,8 @@ For example, like as bellow.
   "BrokerPort" : 1883,
   "BrokerUser" : "",
   "BrokerPassword" : "",
-  "LogFilePath" : "ceratopogon.log"
+  "LogFilePath" : "ceratopogon.log",
+  "MessageQueueSize" : 100
 }
 ```
 
