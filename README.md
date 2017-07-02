@@ -74,9 +74,8 @@ Predefined Topic file format is yaml style.
 
 ```
 ---
-<CLIENT ID>:
-  <TOPIC NAME>: <ID>
-  <TOPIC NAME>: <ID>
+<TOPIC NAME>: <ID>
+<TOPIC NAME>: <ID>
 ```
 
 
@@ -84,12 +83,8 @@ Following is example of predefined topic file.
 
 ```
 ---
-test-client2:
-  topic1: 1
-  topic2: 2
-test-client2:
-  topic1: 1
-  topic2: 2
+topic1: 1
+topic2: 2
 ```
 
 
