@@ -14,7 +14,7 @@ func InitLogger(filename string) error {
 	}
 
 	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
-	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	return nil
 }
