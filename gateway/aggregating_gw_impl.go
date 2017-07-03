@@ -1,6 +1,7 @@
 package ceratopoGon
 
 import (
+	"errors"
 	"github.com/Kmotiko/ceratopoGon/env"
 	"github.com/Kmotiko/ceratopoGon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func NewAggregatingGateway(config *GatewayConfig,
@@ -44,8 +46,9 @@ func (g *AggregatingGateway) ConnectToBroker(cleanSession bool) error {
 	g.mqttClient = (MQTT.NewClient(opts))
 
 	// connect
-	if token := g.mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		log.Println(token.Error())
+	if token := g.mqttClient.Connect(); !token.WaitTimeout(5 * time.Second) {
+		return errors.New("Connect to broker is Timeout.")
+	} else if token.Error() != nil {
 		return token.Error()
 	}
 
@@ -55,15 +58,6 @@ func (g *AggregatingGateway) ConnectToBroker(cleanSession bool) error {
 func (g *AggregatingGateway) connLostHandler(
 	c MQTT.Client, err error) {
 	log.Println("ERROR : MQTT connection is lost with ", err)
-
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
-
-	err = g.ConnectToBroker(false)
-	if err != nil {
-		log.Println("ERROR : failed to connect to broker")
-		os.Exit(0)
-	}
 }
 
 func (g *AggregatingGateway) StartUp() error {
@@ -381,7 +375,11 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 
 	// send Publish to Mqtt Broker.
 	// Topic, Qos, Payload
-	token := g.doPublish(topicName, qos, m.Data)
+	token, err := g.doPublish(topicName, qos, m.Data)
+	if err != nil {
+		log.Println("ERROR : ", err)
+		return
+	}
 
 	if qos == 1 {
 		// if qos 1
@@ -461,10 +459,11 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 		// if first subscribers, send subscribe to broker
 		if len(subscribers) == 1 {
 			qos := message.QosFlag(m.Flags)
-			if token := g.mqttClient.Subscribe(
-				(m.TopicName), byte(qos), g.OnPublish); token.Wait() && token.Error() != nil {
+			token, err := g.doSubscribe((m.TopicName), byte(qos), g.OnPublish)
+			if err != nil || (token.Wait() && token.Error() != nil) {
 				// TODO: error handling
 				log.Println("ERROR : failed to send Subscribe to broker : ", token.Error())
+				rc = message.MQTTSN_RC_REJECTED_CONGESTION
 			}
 		}
 
@@ -491,10 +490,11 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 		// if first subscribers, send subscribe to broker
 		if len(subscribers) == 1 {
 			qos := message.QosFlag(m.Flags)
-			if token := g.mqttClient.Subscribe(
-				(topicName), byte(qos), g.OnPublish); token.Wait() && token.Error() != nil {
+			token, err := g.doSubscribe(topicName, byte(qos), g.OnPublish)
+			if err != nil || (token.Wait() && token.Error() != nil) {
 				// TODO: error handling
 				log.Println("ERROR : failed to send Subscribe to broker : ", token.Error())
+				rc = message.MQTTSN_RC_REJECTED_CONGESTION
 			}
 		}
 
@@ -665,7 +665,7 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 			}
 
 		case message.MQTTSN_TIDT_SHORT_NAME:
-
+			// TODO: implement
 		}
 
 		// send message
@@ -674,10 +674,30 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 }
 
 func (g *AggregatingGateway) doPublish(
-	topicName string, qos byte, data []byte) MQTT.Token {
+	topicName string, qos byte, data []byte) (MQTT.Token, error) {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
-	return g.mqttClient.Publish(topicName, qos, false, data)
+	if g.mqttClient.IsConnected() {
+		return g.mqttClient.Publish(topicName, qos, false, data), nil
+	} else if g.ConnectToBroker(false) != nil {
+		return nil, errors.New("Broker connection is not available.")
+	} else {
+		return g.mqttClient.Publish(topicName, qos, false, data), nil
+	}
 
+}
+
+func (g *AggregatingGateway) doSubscribe(
+	topicName string, qos byte, handler interface{}) (MQTT.Token, error) {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
+	if g.mqttClient.IsConnected() {
+		return g.mqttClient.Subscribe(topicName, byte(qos), g.OnPublish), nil
+	} else if g.ConnectToBroker(false) != nil {
+		return nil, errors.New("Broker connection is not available.")
+	} else {
+		return g.mqttClient.Subscribe(topicName, byte(qos), g.OnPublish), nil
+	}
 }

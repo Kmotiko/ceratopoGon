@@ -1,15 +1,16 @@
 package ceratopoGon
 
 import (
+	"errors"
 	"github.com/Kmotiko/ceratopoGon/env"
 	"github.com/Kmotiko/ceratopoGon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 /**
@@ -166,15 +167,6 @@ func NewTransparentSnSession(
 func (s *TransparentSnSession) connLostHandler(
 	c MQTT.Client, err error) {
 	log.Println("ERROR : MQTT connection is lost with ", err)
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	err = s.ConnectToBroker(false)
-	if err != nil {
-		log.Println("ERROR : failed to connect to broker")
-		os.Exit(0)
-	}
 }
 
 /**
@@ -200,8 +192,10 @@ func (s *TransparentSnSession) ConnectToBroker(cleanSession bool) error {
 	// create client instance
 	s.mqttClient = (MQTT.NewClient(opts))
 
-	// connect
-	if token := s.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+	// connect, timeout time is 5 sec
+	if token := s.mqttClient.Connect(); !token.WaitTimeout(5 * time.Second) {
+		return errors.New("Connect to broker is Timeout.")
+	} else if token.Error() != nil {
 		return token.Error()
 	}
 
@@ -328,7 +322,15 @@ func (s *TransparentSnSession) doPublish(m *message.Publish) {
 
 	// send Publish to Mqtt Broker.
 	// Topic, Qos, Retain, Payload
-	token := s.mqttClient.Publish(topicName, qos, false, m.Data)
+	var token MQTT.Token
+	if s.mqttClient.IsConnected() {
+		token = s.mqttClient.Publish(topicName, qos, false, m.Data)
+	} else if err := s.ConnectToBroker(false); err != nil {
+		log.Println("ERROR : Broker connection is not available")
+		return
+	} else {
+		token = s.mqttClient.Publish(topicName, qos, false, m.Data)
+	}
 
 	if qos == 1 {
 		// if qos 1
@@ -353,6 +355,7 @@ func (s *TransparentSnSession) doSubscribe(m *message.Subscribe) {
 	// return code
 	var rc byte = message.MQTTSN_RC_ACCEPTED
 
+	var topicName string
 	switch message.TopicIdType(m.Flags) {
 	// if TopicIdType is NORMAL, regist it
 	case message.MQTTSN_TIDT_NORMAL:
@@ -363,11 +366,7 @@ func (s *TransparentSnSession) doSubscribe(m *message.Subscribe) {
 		if IsWildCarded(topics) != true {
 			topicId = s.StoreTopic(m.TopicName)
 		}
-
-		// send subscribe to broker
-		mqtt := s.mqttClient
-		qos := message.QosFlag(m.Flags)
-		mqtt.Subscribe(m.TopicName, qos, s.OnPublish)
+		topicName = m.TopicName
 
 	// else if PREDEFINED, get TopicName and Subscribe to Broker
 	case message.MQTTSN_TIDT_PREDEFINED:
@@ -377,21 +376,34 @@ func (s *TransparentSnSession) doSubscribe(m *message.Subscribe) {
 		topicId = m.TopicId
 
 		// get topic name and subscribe to broker
-		topicName, ok := s.LoadPredefTopic(topicId)
+		var ok bool
+		topicName, ok = s.LoadPredefTopic(topicId)
 		if ok != true {
 			// TODO: error handling
 			rc = message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID
 		}
 
-		// send subscribe to broker
-		mqtt := s.mqttClient
-		qos := message.QosFlag(m.Flags)
-		mqtt.Subscribe(topicName, qos, s.OnPublish)
-
 	// else if SHORT_NAME, subscribe to broker
 	case message.MQTTSN_TIDT_SHORT_NAME:
 		log.Println("WARN : Subscribe SHORT Topic is not implemented")
 		// TODO: implement
+	}
+
+	// send subscribe
+	qos := message.QosFlag(m.Flags)
+	var token MQTT.Token
+	if s.mqttClient.IsConnected() {
+		token = s.mqttClient.Subscribe(topicName, qos, s.OnPublish)
+	} else if s.ConnectToBroker(false) != nil {
+		log.Println("ERROR : Broker connection is not available")
+		token = nil
+		rc = message.MQTTSN_RC_REJECTED_CONGESTION
+	} else {
+		token = s.mqttClient.Subscribe(topicName, qos, s.OnPublish)
+	}
+
+	if token != nil && (token.WaitTimeout(5*time.Second) || token.Error() != nil) {
+		log.Println("ERROR : Broker connection is not available")
 	}
 
 	// send subscribe to broker

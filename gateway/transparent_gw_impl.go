@@ -196,6 +196,7 @@ func (g *TransparentGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 		// connect to mqtt broker
 		err := s.ConnectToBroker(true)
 		if err != nil {
+			log.Println("ERROR : ", err)
 			// send conn ack
 			ack := message.NewConnAck()
 			ack.ReturnCode = message.MQTTSN_RC_REJECTED_CONGESTION

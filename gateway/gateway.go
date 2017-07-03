@@ -3,10 +3,12 @@ package ceratopoGon
 import (
 	"github.com/Kmotiko/ceratopoGon/messages"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
+	"log"
 	"net"
 	"os"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Gateway interface {
@@ -55,9 +57,15 @@ func serverLoop(gateway Gateway, host string, port int) error {
 }
 
 func waitPubAck(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16) {
-	token.Wait()
-	puback := message.NewPubAck(topicId, msgId, message.MQTTSN_RC_ACCEPTED)
-	s.Conn.WriteToUDP(puback.Marshall(), s.Remote)
+	// timeout time is 10 sec
+	if !token.WaitTimeout(10 * time.Second) {
+		log.Println("ERROR : Wait PubAck is Timeout.")
+	} else if token.Error() != nil {
+		log.Println("ERROR : ", token.Error())
+	} else {
+		puback := message.NewPubAck(topicId, msgId, message.MQTTSN_RC_ACCEPTED)
+		s.Conn.WriteToUDP(puback.Marshall(), s.Remote)
+	}
 }
 
 func waitPubComp(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16) {
