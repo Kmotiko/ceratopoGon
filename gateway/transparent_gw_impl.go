@@ -10,12 +10,10 @@ import (
 
 func NewTransparentGateway(
 	config *GatewayConfig,
-	predefTopics PredefinedTopics,
 	signalChan chan os.Signal) *TransparentGateway {
 	g := &TransparentGateway{
 		make(map[string]*TransparentSnSession),
 		config,
-		predefTopics,
 		signalChan,
 		NewStatisticsReporter(1)}
 	return g
@@ -185,13 +183,6 @@ func (g *TransparentGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 			g.Config.BrokerPassword,
 			g.Config.MessageQueueSize,
 			g.statisticsReporter)
-
-		// read predefined topics
-		if topics, ok := g.predefTopics[m.ClientId]; ok {
-			for key, value := range topics {
-				s.StorePredefTopicWithId(key, value)
-			}
-		}
 
 		// connect to mqtt broker
 		err := s.ConnectToBroker(true)

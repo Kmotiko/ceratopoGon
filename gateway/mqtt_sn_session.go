@@ -17,13 +17,12 @@ import (
  *
  */
 type MqttSnSession struct {
-	mutex        sync.RWMutex
-	ClientId     string
-	Conn         *net.UDPConn
-	Remote       *net.UDPAddr
-	Topics       *TopicMap
-	PredefTopics *TopicMap
-	msgId        *ManagedId
+	mutex    sync.RWMutex
+	ClientId string
+	Conn     *net.UDPConn
+	Remote   *net.UDPAddr
+	Topics   *TopicMap
+	msgId    *ManagedId
 
 	// duration uint16
 	// state bool
@@ -54,7 +53,6 @@ func NewMqttSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *MqttSn
 		id,
 		conn,
 		remote,
-		NewTopicMap(),
 		NewTopicMap(),
 		&ManagedId{},
 	}
@@ -92,34 +90,6 @@ func (s *MqttSnSession) LoadTopicId(topicName string) (uint16, bool) {
 /**
  *
  */
-func (s *MqttSnSession) StorePredefTopic(topicName string) uint16 {
-	return s.PredefTopics.StoreTopic(topicName)
-}
-
-/**
- *
- */
-func (s *MqttSnSession) StorePredefTopicWithId(topicName string, id uint16) bool {
-	return s.PredefTopics.StoreTopicWithId(topicName, id)
-}
-
-/**
- *
- */
-func (s *MqttSnSession) LoadPredefTopic(topicId uint16) (string, bool) {
-	return s.PredefTopics.LoadTopic(topicId)
-}
-
-/**
- *
- */
-func (s *MqttSnSession) LoadPredefTopicId(topicName string) (uint16, bool) {
-	return s.PredefTopics.LoadTopicId(topicName)
-}
-
-/**
- *
- */
 func (s *MqttSnSession) FreeMsgId(i uint16) {
 	s.msgId.FreeId(i)
 }
@@ -151,7 +121,6 @@ func NewTransparentSnSession(
 			id,
 			conn,
 			remote,
-			NewTopicMap(),
 			NewTopicMap(),
 			&ManagedId{}},
 		nil, host, port, user, password,
@@ -223,7 +192,7 @@ func (s *TransparentSnSession) OnPublish(client MQTT.Client, msg MQTT.Message) {
 	msgId := s.NextMsgId()
 
 	// get predef topicid
-	topicId, ok := s.LoadPredefTopicId(topic)
+	topicId, ok := LoadPredefTopicId(topic)
 	if ok {
 		// process as predef topicid
 		// qos, retain, topicId, msgId, data
@@ -297,7 +266,7 @@ func (s *TransparentSnSession) doPublish(m *message.Publish) {
 		}
 	} else if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
 		// search topic name from topic id
-		topicName, ok = s.LoadPredefTopic(m.TopicId)
+		topicName, ok = LoadPredefTopic(m.TopicId)
 		if ok == false {
 			// error handling
 			log.Println("ERROR : topic was not found.")
@@ -377,7 +346,7 @@ func (s *TransparentSnSession) doSubscribe(m *message.Subscribe) {
 
 		// get topic name and subscribe to broker
 		var ok bool
-		topicName, ok = s.LoadPredefTopic(topicId)
+		topicName, ok = LoadPredefTopic(topicId)
 		if ok != true {
 			// TODO: error handling
 			rc = message.MQTTSN_RC_REJECTED_INVALID_TOPIC_ID

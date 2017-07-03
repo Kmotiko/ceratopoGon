@@ -21,7 +21,6 @@ type AggregatingGateway struct {
 	MqttSnSessions     map[string]*MqttSnSession
 	Config             *GatewayConfig
 	mqttClient         MQTT.Client
-	predefTopics       PredefinedTopics
 	signalChan         chan os.Signal
 	statisticsReporter *StatisticsReporter
 	// topics Topic
@@ -30,7 +29,6 @@ type AggregatingGateway struct {
 type TransparentGateway struct {
 	MqttSnSessions     map[string]*TransparentSnSession
 	Config             *GatewayConfig
-	predefTopics       PredefinedTopics
 	signalChan         chan os.Signal
 	statisticsReporter *StatisticsReporter
 }

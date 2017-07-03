@@ -14,12 +14,10 @@ import (
 )
 
 func NewAggregatingGateway(config *GatewayConfig,
-	predefTopics PredefinedTopics,
 	signalChan chan os.Signal) *AggregatingGateway {
 	g := &AggregatingGateway{
 		MqttSnSessions:     make(map[string]*MqttSnSession),
 		Config:             config,
-		predefTopics:       predefTopics,
 		signalChan:         signalChan,
 		statisticsReporter: NewStatisticsReporter(1)}
 	return g
@@ -220,13 +218,6 @@ func (g *AggregatingGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 
 		// create new session
 		s = NewMqttSnSession(m.ClientId, conn, remote)
-
-		// read predefined topics
-		if topics, ok := g.predefTopics[m.ClientId]; ok {
-			for key, value := range topics {
-				s.StorePredefTopicWithId(key, value)
-			}
-		}
 	}
 
 	// TODO: check will flags
@@ -350,7 +341,7 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 		}
 	} else if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_PREDEFINED {
 		// search topic name from topic id
-		topicName, ok = s.LoadPredefTopic(m.TopicId)
+		topicName, ok = LoadPredefTopic(m.TopicId)
 		if ok == false {
 			// error handling
 			log.Println("ERROR : topic was not found.")
@@ -648,7 +639,7 @@ func (g *AggregatingGateway) OnPublish(client MQTT.Client, msg MQTT.Message) {
 
 		case message.MQTTSN_TIDT_PREDEFINED:
 			// get topicid
-			topicId, ok := session.LoadPredefTopicId(topic)
+			topicId, ok := LoadPredefTopicId(topic)
 
 			// if not found
 			if !ok {
