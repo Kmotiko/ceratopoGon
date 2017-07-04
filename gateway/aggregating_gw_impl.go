@@ -51,7 +51,7 @@ func (g *AggregatingGateway) ConnectToBroker(cleanSession bool) error {
 	g.mqttClient = (MQTT.NewClient(opts))
 
 	// connect
-	if token := g.mqttClient.Connect(); !token.WaitTimeout(5 * time.Second) {
+	if token := g.mqttClient.Connect(); !token.WaitTimeout(10 * time.Second) {
 		return errors.New("Connect to broker is Timeout.")
 	} else if token.Error() != nil {
 		return token.Error()
@@ -415,7 +415,7 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 
 	if qos == 1 {
 		// if qos 1
-		go waitPubAck(token, s, m.TopicId, m.MsgId)
+		go waitPubAck(token, s, m.TopicId, m.MsgId, g.statisticsReporter)
 		g.statisticsReporter.countUpSendPublish()
 	} else if qos == 2 {
 		// elif qos 2

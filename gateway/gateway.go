@@ -61,7 +61,7 @@ func serverLoop(gateway Gateway, host string, port int) error {
 	}
 }
 
-func waitPubAck(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16) {
+func waitPubAck(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16, reporter *StatisticsReporter) {
 	// timeout time is 10 sec
 	if !token.WaitTimeout(10 * time.Second) {
 		log.Println("ERROR : Wait PubAck is Timeout.")
@@ -70,6 +70,7 @@ func waitPubAck(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16
 	} else {
 		puback := message.NewPubAck(topicId, msgId, message.MQTTSN_RC_ACCEPTED)
 		s.Conn.WriteToUDP(puback.Marshall(), s.Remote)
+		reporter.countUpPubComp()
 	}
 }
 

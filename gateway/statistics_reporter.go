@@ -9,12 +9,13 @@ import (
 type StatisticsReporter struct {
 	sendPublish  uint64
 	recvPublish  uint64
+	pubComp      uint64
 	sessionCount uint64
 	interval     time.Duration
 }
 
 func NewStatisticsReporter(interval time.Duration) *StatisticsReporter {
-	r := &StatisticsReporter{0, 0, 0, interval}
+	r := &StatisticsReporter{0, 0, 0, 0, interval}
 	return r
 }
 
@@ -28,9 +29,12 @@ func (r *StatisticsReporter) loggingLoop() {
 				", PUBLISH-RECV-COUNT : ",
 				atomic.LoadUint64(&r.recvPublish),
 				", PUBLISH-SEND-COUNT : ",
-				atomic.LoadUint64(&r.sendPublish))
+				atomic.LoadUint64(&r.sendPublish),
+				", PUBLISH-COMP-COUNT : ",
+				atomic.LoadUint64(&r.pubComp))
 			atomic.StoreUint64(&r.sendPublish, 0)
 			atomic.StoreUint64(&r.recvPublish, 0)
+			atomic.StoreUint64(&r.pubComp, 0)
 		}
 	}
 }
@@ -41,6 +45,10 @@ func (r *StatisticsReporter) countUpSendPublish() {
 
 func (r *StatisticsReporter) countUpRecvPublish() {
 	atomic.AddUint64(&r.recvPublish, 1)
+}
+
+func (r *StatisticsReporter) countUpPubComp() {
+	atomic.AddUint64(&r.pubComp, 1)
 }
 
 func (r *StatisticsReporter) storeSessionCount(c uint64) {
