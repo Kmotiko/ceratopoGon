@@ -363,6 +363,7 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 		log.Println("ERROR : MqttSn session not found for remote", remote.String())
 		return
 	}
+	s.RegistPublishTime(m.MsgId, time.Now())
 
 	var topicName string
 	if message.TopicIdType(m.Flags) == message.MQTTSN_TIDT_NORMAL {

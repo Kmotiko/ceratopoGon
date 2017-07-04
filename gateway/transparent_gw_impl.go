@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 /**
@@ -334,6 +335,7 @@ func (g *TransparentGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 		log.Println("ERROR : MqttSn session not found for remote", remote.String())
 		return
 	}
+	s.RegistPublishTime(m.MsgId, time.Now())
 
 	select {
 	case s.sendBuffer <- m:
