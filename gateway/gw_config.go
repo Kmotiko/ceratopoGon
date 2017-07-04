@@ -15,6 +15,8 @@ type GatewayConfig struct {
 	BrokerPassword   string
 	LogFilePath      string
 	MessageQueueSize int
+	ReadBuffSize     int
+	WriteBuffSize    int
 }
 
 func ParseConfig(filename string) (*GatewayConfig, error) {

@@ -40,13 +40,32 @@ type TransparentGateway struct {
 	statisticsReporter *StatisticsReporter
 }
 
-func serverLoop(gateway Gateway, host string, port int) error {
+func serverLoop(
+	gateway Gateway,
+	host string,
+	port int,
+	readBuff int,
+	writeBuff int) error {
 	serverStr := host + ":" + strconv.Itoa(port)
 	udpAddr, err := net.ResolveUDPAddr("udp", serverStr)
 	conn, err := net.ListenUDP("udp", udpAddr)
 
 	if err != nil {
 		return err
+	}
+
+	// set os buffer size
+	if readBuff > 0 {
+		log.Println("set read buff size : ", readBuff)
+		if err := conn.SetReadBuffer(readBuff); err != nil {
+			log.Println("failed to set read buff size")
+		}
+	}
+	if writeBuff > 0 {
+		log.Println("set write buff size : ", writeBuff)
+		if err := conn.SetWriteBuffer(writeBuff); err != nil {
+			log.Println("failed to set write buff size")
+		}
 	}
 
 	buf := make([]byte, 64*1024)
