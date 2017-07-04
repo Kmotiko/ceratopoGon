@@ -8,6 +8,9 @@ import (
 	"os"
 )
 
+/**
+ *
+ */
 func NewTransparentGateway(
 	config *GatewayConfig,
 	signalChan chan os.Signal) *TransparentGateway {
@@ -15,18 +18,26 @@ func NewTransparentGateway(
 		make(map[string]*TransparentSnSession),
 		config,
 		signalChan,
+		make(chan *MessageQueueObject, config.MessageQueueSize),
 		NewStatisticsReporter(1)}
 	return g
 }
 
+/**
+ *
+ */
 func (g *TransparentGateway) StartUp() error {
 	// launch server loop
 	go serverLoop(g, g.Config.Host, g.Config.Port)
+	go g.recvLoop()
 	go g.statisticsReporter.loggingLoop()
 	g.waitSignal()
 	return nil
 }
 
+/**
+ *
+ */
 func (g *TransparentGateway) waitSignal() {
 	<-g.signalChan
 	for _, s := range g.MqttSnSessions {
@@ -36,12 +47,36 @@ func (g *TransparentGateway) waitSignal() {
 	return
 }
 
+/**
+ *
+ */
 func (g *TransparentGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, packet []byte) {
 	// parse message
 	m := message.UnMarshall(packet)
 
+	select {
+	case g.recvBuffer <- &MessageQueueObject{remote, conn, m}:
+	default:
+		log.Println("ERROR : Failed to push MqttSnMessage, MessageBuffer is full.")
+	}
+}
+
+/**
+ *
+ */
+func (g *TransparentGateway) recvLoop() {
+	for {
+		mo := <-g.recvBuffer
+		g.HandleMessage(mo.msg, mo.conn, mo.remote)
+	}
+}
+
+/**
+ *
+ */
+func (g *TransparentGateway) HandleMessage(msg message.MqttSnMessage, conn *net.UDPConn, remote *net.UDPAddr) {
 	// handle message
-	switch mi := m.(type) {
+	switch mi := msg.(type) {
 	case *message.MqttSnHeader:
 		switch mi.MsgType {
 		case message.MQTTSNT_WILLTOPICREQ:

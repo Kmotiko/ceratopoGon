@@ -13,16 +13,23 @@ import (
 	"time"
 )
 
+/**
+ *
+ */
 func NewAggregatingGateway(config *GatewayConfig,
 	signalChan chan os.Signal) *AggregatingGateway {
 	g := &AggregatingGateway{
 		MqttSnSessions:     make(map[string]*MqttSnSession),
 		Config:             config,
 		signalChan:         signalChan,
+		recvBuffer:         make(chan *MessageQueueObject, config.MessageQueueSize),
 		statisticsReporter: NewStatisticsReporter(1)}
 	return g
 }
 
+/**
+ *
+ */
 func (g *AggregatingGateway) ConnectToBroker(cleanSession bool) error {
 	log.Println("Connect to broker")
 
@@ -53,11 +60,17 @@ func (g *AggregatingGateway) ConnectToBroker(cleanSession bool) error {
 	return nil
 }
 
+/**
+ *
+ */
 func (g *AggregatingGateway) connLostHandler(
 	c MQTT.Client, err error) {
 	log.Println("ERROR : MQTT connection is lost with ", err)
 }
 
+/**
+ *
+ */
 func (g *AggregatingGateway) StartUp() error {
 	// connect to broker
 	err := g.ConnectToBroker(true)
@@ -67,11 +80,15 @@ func (g *AggregatingGateway) StartUp() error {
 
 	// launch server loop
 	go serverLoop(g, g.Config.Host, g.Config.Port)
+	go g.recvLoop()
 	go g.statisticsReporter.loggingLoop()
 	g.waitSignal()
 	return nil
 }
 
+/**
+ *
+ */
 func (g *AggregatingGateway) waitSignal() {
 	<-g.signalChan
 	if g.mqttClient.IsConnected() {
@@ -81,12 +98,36 @@ func (g *AggregatingGateway) waitSignal() {
 	return
 }
 
+/**
+ *
+ */
 func (g *AggregatingGateway) HandlePacket(conn *net.UDPConn, remote *net.UDPAddr, packet []byte) {
 	// parse message
 	m := message.UnMarshall(packet)
 
+	select {
+	case g.recvBuffer <- &MessageQueueObject{remote, conn, m}:
+	default:
+		log.Println("ERROR : Failed to push MqttSnMessage, MessageBuffer is full.")
+	}
+}
+
+/**
+ *
+ */
+func (g *AggregatingGateway) recvLoop() {
+	for {
+		mo := <-g.recvBuffer
+		g.HandleMessage(mo.msg, mo.conn, mo.remote)
+	}
+}
+
+/**
+ *
+ */
+func (g *AggregatingGateway) HandleMessage(msg message.MqttSnMessage, conn *net.UDPConn, remote *net.UDPAddr) {
 	// handle message
-	switch mi := m.(type) {
+	switch mi := msg.(type) {
 	case *message.MqttSnHeader:
 		switch mi.MsgType {
 		case message.MQTTSNT_WILLTOPICREQ:

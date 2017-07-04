@@ -16,20 +16,27 @@ type Gateway interface {
 	StartUp() error
 }
 
+type MessageQueueObject struct {
+	remote *net.UDPAddr
+	conn   *net.UDPConn
+	msg    message.MqttSnMessage
+}
+
 type AggregatingGateway struct {
 	mutex              sync.RWMutex
 	MqttSnSessions     map[string]*MqttSnSession
 	Config             *GatewayConfig
 	mqttClient         MQTT.Client
 	signalChan         chan os.Signal
+	recvBuffer         chan *MessageQueueObject
 	statisticsReporter *StatisticsReporter
-	// topics Topic
 }
 
 type TransparentGateway struct {
 	MqttSnSessions     map[string]*TransparentSnSession
 	Config             *GatewayConfig
 	signalChan         chan os.Signal
+	recvBuffer         chan *MessageQueueObject
 	statisticsReporter *StatisticsReporter
 }
 

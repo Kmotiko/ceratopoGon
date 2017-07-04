@@ -66,7 +66,7 @@ Following config parameters is available.
 |BrokerUser         |username to use broker authentication          |string      |"user"             |
 |BrokerPassword     |password to use broker authentication          |string      |"pass"             |
 |LogFilePath        |path of log file                               |string      |"ceratopogon.log"  |
-|MessageQueueSize   |Size of queue only used in Transparent Mode    |int         |100                |
+|MessageQueueSize   |Message queue size                             |int         |100                |
 
 ## predefined topic file
 
