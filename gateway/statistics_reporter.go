@@ -41,7 +41,7 @@ func (r *StatisticsReporter) loggingLoop() {
 				avg = atomic.LoadInt64(&r.tatTotal) /
 					int64(atomic.LoadUint64(&r.pubComp))
 			}
-			log.Println("[STATISTICS-REPORT] PUBLISH-TAT-AVG",
+			log.Println("[STATISTICS-REPORT] PUBLISH-TAT-AVG : ",
 				avg,
 				", PUBLISH-TAT-MIN : ",
 				atomic.LoadInt64(&r.tatMin),
