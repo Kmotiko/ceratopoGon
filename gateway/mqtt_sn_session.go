@@ -189,8 +189,8 @@ func (s *TransparentSnSession) ConnectToBroker(cleanSession bool) error {
 	// create client instance
 	s.mqttClient = (MQTT.NewClient(opts))
 
-	// connect, timeout time is 5 sec
-	if token := s.mqttClient.Connect(); !token.WaitTimeout(10 * time.Second) {
+	// connect, timeout time is 15 sec
+	if token := s.mqttClient.Connect(); !token.WaitTimeout(15 * time.Second) {
 		return errors.New("Connect to broker is Timeout.")
 	} else if token.Error() != nil {
 		return token.Error()
@@ -399,7 +399,7 @@ func (s *TransparentSnSession) doSubscribe(m *message.Subscribe) {
 		token = s.mqttClient.Subscribe(topicName, qos, s.OnPublish)
 	}
 
-	if token != nil && (!token.WaitTimeout(10*time.Second) || token.Error() != nil) {
+	if token != nil && (!token.WaitTimeout(15*time.Second) || token.Error() != nil) {
 		log.Println("ERROR : Broker connection is not available")
 	}
 

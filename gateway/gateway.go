@@ -81,8 +81,8 @@ func serverLoop(
 }
 
 func waitPubAck(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16, reporter *StatisticsReporter) {
-	// timeout time is 10 sec
-	if !token.WaitTimeout(10 * time.Second) {
+	// timeout time is 15 sec
+	if !token.WaitTimeout(15 * time.Second) {
 		log.Println("ERROR : Wait PubAck is Timeout.")
 	} else if token.Error() != nil {
 		log.Println("ERROR : ", token.Error())

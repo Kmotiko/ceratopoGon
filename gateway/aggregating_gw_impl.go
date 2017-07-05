@@ -51,7 +51,7 @@ func (g *AggregatingGateway) ConnectToBroker(cleanSession bool) error {
 	g.mqttClient = (MQTT.NewClient(opts))
 
 	// connect
-	if token := g.mqttClient.Connect(); !token.WaitTimeout(10 * time.Second) {
+	if token := g.mqttClient.Connect(); !token.WaitTimeout(15 * time.Second) {
 		return errors.New("Connect to broker is Timeout.")
 	} else if token.Error() != nil {
 		return token.Error()
@@ -493,7 +493,7 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 		if len(subscribers) == 1 {
 			qos := message.QosFlag(m.Flags)
 			token, err := g.doSubscribe((m.TopicName), byte(qos), g.OnPublish)
-			if err != nil || (token.Wait() && token.Error() != nil) {
+			if err != nil || (token.WaitTimeout(15*time.Second) && token.Error() != nil) {
 				// TODO: error handling
 				log.Println("ERROR : failed to send Subscribe to broker : ", token.Error())
 				rc = message.MQTTSN_RC_REJECTED_CONGESTION
@@ -524,7 +524,7 @@ func (g *AggregatingGateway) handleSubscribe(conn *net.UDPConn, remote *net.UDPA
 		if len(subscribers) == 1 {
 			qos := message.QosFlag(m.Flags)
 			token, err := g.doSubscribe(topicName, byte(qos), g.OnPublish)
-			if err != nil || (token.Wait() && token.Error() != nil) {
+			if err != nil || (token.WaitTimeout(15*time.Second) && token.Error() != nil) {
 				// TODO: error handling
 				log.Println("ERROR : failed to send Subscribe to broker : ", token.Error())
 				rc = message.MQTTSN_RC_REJECTED_CONGESTION
