@@ -122,8 +122,6 @@ func (s *MqttSnSession) EmitPubCompTime(msgId uint16, t time.Time) int64 {
 		log.Println("WARN : Publish time for ", msgId, " is not exists.")
 		return 0
 	}
-	log.Println(t)
-	log.Println(s.pubTimeMap[msgId])
 	tat := t.Sub(s.pubTimeMap[msgId]) / time.Millisecond
 	delete(s.pubTimeMap, msgId)
 	return int64(tat)

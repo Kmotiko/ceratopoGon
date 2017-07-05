@@ -50,7 +50,9 @@ For example, like as bellow.
   "BrokerUser" : "",
   "BrokerPassword" : "",
   "LogFilePath" : "ceratopogon.log",
-  "MessageQueueSize" : 100
+  "MessageQueueSize" : 100,
+  "ReadBuffSize" : 212992,
+  "WriteBuffSize" : 212992
 }
 ```
 
@@ -67,6 +69,8 @@ Following config parameters is available.
 |BrokerPassword     |password to use broker authentication          |string      |"pass"             |
 |LogFilePath        |path of log file                               |string      |"ceratopogon.log"  |
 |MessageQueueSize   |Message queue size                             |int         |100                |
+|ReadBuffSize       |Recv buffer size set to operating system       |int         |212992             |
+|WriteBuffSize      |Write buffer size set to operating system      |int         |212992             |
 
 ## predefined topic file
 

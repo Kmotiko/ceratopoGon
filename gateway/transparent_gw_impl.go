@@ -28,17 +28,8 @@ func NewTransparentGateway(
  *
  */
 func (g *TransparentGateway) StartUp() error {
-	readBuff := 0
-	writeBuff := 0
-	if g.Config.ReadBuffSize > 0 {
-		readBuff = g.Config.ReadBuffSize
-	}
-	if g.Config.WriteBuffSize > 0 {
-		writeBuff = g.Config.WriteBuffSize
-	}
-
 	// launch server loop
-	go serverLoop(g, g.Config.Host, g.Config.Port, readBuff, writeBuff)
+	go serverLoop(g, g.Config.Host, g.Config.Port, g.Config.ReadBuffSize, g.Config.WriteBuffSize)
 	go g.recvLoop()
 	go g.statisticsReporter.loggingLoop()
 	g.waitSignal()
