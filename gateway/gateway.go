@@ -92,7 +92,7 @@ func waitPubAck(token MQTT.Token, s *MqttSnSession, topicId uint16, msgId uint16
 		s.Conn.WriteToUDP(puback.Marshall(), s.Remote)
 
 		// count up statistics information
-		tat := s.EmitPubCompTime(msgId, time.Now())
+		tat := s.tatCalculator.CalculateTatAndRemoveMsgId(msgId, time.Now())
 		reporter.countUpPubComp()
 		reporter.storeTat(tat)
 	}

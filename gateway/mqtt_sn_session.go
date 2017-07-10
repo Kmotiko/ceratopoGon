@@ -17,13 +17,13 @@ import (
  *
  */
 type MqttSnSession struct {
-	mutex      sync.RWMutex
-	ClientId   string
-	Conn       *net.UDPConn
-	Remote     *net.UDPAddr
-	Topics     *TopicMap
-	msgId      *ManagedId
-	pubTimeMap map[uint16]time.Time
+	mutex         sync.RWMutex
+	ClientId      string
+	Conn          *net.UDPConn
+	Remote        *net.UDPAddr
+	Topics        *TopicMap
+	msgId         *ManagedId
+	tatCalculator *TatCalculator
 
 	// duration uint16
 	// state bool
@@ -56,7 +56,7 @@ func NewMqttSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *MqttSn
 		remote,
 		NewTopicMap(),
 		&ManagedId{},
-		make(map[uint16]time.Time, 10),
+		NewTatCalculator(),
 	}
 	return s
 }
@@ -106,30 +106,6 @@ func (s *MqttSnSession) NextMsgId() uint16 {
 /**
  *
  */
-func (s *MqttSnSession) RegistPublishTime(msgId uint16, t time.Time) {
-	if _, ok := s.pubTimeMap[msgId]; ok {
-		log.Println("WARN : Publish time for ", msgId, " is already exists.")
-	}
-	s.pubTimeMap[msgId] = t
-	return
-}
-
-/**
- * calculate tat as msec for specified msgid, and delete start time from map.
- */
-func (s *MqttSnSession) EmitPubCompTime(msgId uint16, t time.Time) int64 {
-	if _, ok := s.pubTimeMap[msgId]; !ok {
-		log.Println("WARN : Publish time for ", msgId, " is not exists.")
-		return 0
-	}
-	tat := t.Sub(s.pubTimeMap[msgId]) / time.Millisecond
-	delete(s.pubTimeMap, msgId)
-	return int64(tat)
-}
-
-/**
- *
- */
 func NewTransparentSnSession(
 	id string,
 	conn *net.UDPConn,
@@ -149,7 +125,7 @@ func NewTransparentSnSession(
 			remote,
 			NewTopicMap(),
 			&ManagedId{},
-			make(map[uint16]time.Time, 10),
+			NewTatCalculator(),
 		},
 		nil, host, port, user, password,
 		make(chan message.MqttSnMessage, queueSize),
