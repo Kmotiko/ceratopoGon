@@ -16,6 +16,15 @@ import (
 /**
  *
  */
+const (
+	MQTTSN_SESSION_ACTIVE = iota
+	MQTTSN_SESSION_ASLEEP
+	MQTTSN_SESSION_DISCONNECTED
+)
+
+/**
+ *
+ */
 type MqttSnSession struct {
 	mutex         sync.RWMutex
 	ClientId      string
@@ -23,10 +32,9 @@ type MqttSnSession struct {
 	Remote        *net.UDPAddr
 	Topics        *TopicMap
 	msgId         *ManagedId
+	duration      uint16
+	state         byte
 	tatCalculator *TatCalculator
-
-	// duration uint16
-	// state bool
 }
 
 /**
@@ -56,6 +64,8 @@ func NewMqttSnSession(id string, conn *net.UDPConn, remote *net.UDPAddr) *MqttSn
 		remote,
 		NewTopicMap(),
 		&ManagedId{},
+		0,
+		MQTTSN_SESSION_ACTIVE,
 		NewTatCalculator(),
 	}
 	return s
@@ -125,6 +135,8 @@ func NewTransparentSnSession(
 			remote,
 			NewTopicMap(),
 			&ManagedId{},
+			0,
+			MQTTSN_SESSION_ACTIVE,
 			NewTatCalculator(),
 		},
 		nil, host, port, user, password,
@@ -173,6 +185,15 @@ func (s *TransparentSnSession) ConnectToBroker(cleanSession bool) error {
 	}
 
 	return nil
+}
+
+func (s *TransparentSnSession) Disconnect() {
+	log.Println("Disconnect from broker")
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.mqttClient.Disconnect(250)
 }
 
 /**

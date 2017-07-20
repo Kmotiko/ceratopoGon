@@ -363,6 +363,17 @@ func (g *AggregatingGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 		log.Println("ERROR : MqttSn session not found for remote", remote.String())
 		return
 	}
+
+	// check connection state
+	if s.state == MQTTSN_SESSION_DISCONNECTED {
+		log.Println("INFO : MqttSn session is already DISCONNECTED : ", remote.String())
+		return
+	} else if s.state == MQTTSN_SESSION_ASLEEP {
+		log.Println("INFO : MqttSn session is SLEEP : ", remote.String())
+		// TODO: implement
+	}
+
+	// regist current time to calculate TAT
 	s.tatCalculator.RegistPublishTime(m.MsgId, time.Now())
 
 	var topicName string
@@ -591,11 +602,20 @@ func (g *AggregatingGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDP
 	log.Println("handle DisConnect")
 	log.Println("DisConnect : ", remote.String())
 
-	// TODO: implement
+	s, ok := g.MqttSnSessions[remote.String()]
+	if !ok {
+		log.Println("Not found disconnected client : ", remote.String())
+		return
+	}
+
 	if m.Duration > 0 {
-		// TODO: set session state to SLEEP
+		// set session state to SLEEP
+		s.duration = m.Duration
+		s.state = MQTTSN_SESSION_ASLEEP
 	} else {
-		// TODO: set session state to DISCONNECT
+		// set session state to DISCONNECT
+		s.duration = 0
+		s.state = MQTTSN_SESSION_DISCONNECTED
 	}
 
 	// send DisConnect

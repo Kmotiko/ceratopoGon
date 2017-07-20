@@ -221,7 +221,7 @@ func (g *TransparentGateway) handleConnect(conn *net.UDPConn, remote *net.UDPAdd
 			g.statisticsReporter)
 
 		// connect to mqtt broker
-		err := s.ConnectToBroker(true)
+		err := s.ConnectToBroker(message.HasCleanSessionFlag(m.Flags))
 		if err != nil {
 			log.Println("ERROR : ", err)
 			// send conn ack
@@ -335,6 +335,17 @@ func (g *TransparentGateway) handlePublish(conn *net.UDPConn, remote *net.UDPAdd
 		log.Println("ERROR : MqttSn session not found for remote", remote.String())
 		return
 	}
+
+	// check connection state
+	if s.state == MQTTSN_SESSION_DISCONNECTED {
+		log.Println("INFO : MqttSn session is already DISCONNECTED : ", remote.String())
+		return
+	} else if s.state == MQTTSN_SESSION_ASLEEP {
+		// TODO: implement
+		log.Println("INFO : MqttSn session is SLEEP : ", remote.String())
+	}
+
+	// regist current time to calculate TAT
 	s.tatCalculator.RegistPublishTime(m.MsgId, time.Now())
 
 	select {
@@ -435,14 +446,24 @@ func (g *TransparentGateway) handleDisConnect(conn *net.UDPConn, remote *net.UDP
 	log.Println("handle DisConnect")
 	log.Println("DisConnect : ", remote.String())
 
-	// TODO: implement
-	if m.Duration > 0 {
-		// TODO: set session state to SLEEP
-	} else {
-		// TODO: set session state to DISCONNECT
+	s, ok := g.MqttSnSessions[remote.String()]
+	if !ok {
+		log.Println("Not found disconnected client : ", remote.String())
+		return
 	}
 
-	// TODO: disconnect mqtt connection with broker ?
+	if m.Duration > 0 {
+		// set session state to SLEEP
+		s.duration = m.Duration
+		s.state = MQTTSN_SESSION_ASLEEP
+	} else {
+		// set session state to DISCONNECT
+		s.duration = 0
+		s.state = MQTTSN_SESSION_DISCONNECTED
+
+		// disconnect mqtt connection with broker
+		s.Disconnect()
+	}
 
 	// send DisConnect
 	dc := message.NewDisConnect(0)
